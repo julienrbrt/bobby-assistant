@@ -1,24 +1,10 @@
-// Copyright 2025 Google LLC
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//      http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
-
 package assistant
 
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"github.com/honeycombio/beeline-go"
+	"github.com/pebble-dev/bobby-assistant/service/assistant/llm"
 	"github.com/pebble-dev/bobby-assistant/service/assistant/persistence"
 	"github.com/pebble-dev/bobby-assistant/service/assistant/quota"
 	"github.com/pebble-dev/bobby-assistant/service/assistant/verifier"
@@ -31,12 +17,12 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/openai/openai-go/v3"
+	"github.com/openai/openai-go/v3/option"
 	"github.com/pebble-dev/bobby-assistant/service/assistant/config"
 	"github.com/pebble-dev/bobby-assistant/service/assistant/functions"
 	"github.com/pebble-dev/bobby-assistant/service/assistant/query"
 	"github.com/redis/go-redis/v9"
-	"google.golang.org/api/iterator"
-	"google.golang.org/genai"
 	"nhooyr.io/websocket"
 )
 
@@ -77,27 +63,116 @@ func NewPromptSession(redisClient *redis.Client, rw http.ResponseWriter, r *http
 	}, nil
 }
 
+func newOpenAIClient() openai.Client {
+	cfg := config.GetConfig()
+	opts := []option.RequestOption{
+		option.WithAPIKey(cfg.APIKey),
+	}
+	if cfg.BaseURL != "" {
+		opts = append(opts, option.WithBaseURL(cfg.BaseURL))
+	}
+	return openai.NewClient(opts...)
+}
+
+func toOpenAITools(defs []llm.FunctionDecl) []openai.ChatCompletionToolUnionParam {
+	var tools []openai.ChatCompletionToolUnionParam
+	for _, d := range defs {
+		params := schemaToMap(d.Parameters)
+		tools = append(tools, openai.ChatCompletionToolUnionParam{
+			OfFunction: &openai.ChatCompletionFunctionToolParam{
+				Function: openai.FunctionDefinitionParam{
+					Name:        d.Name,
+					Description: openai.String(d.Description),
+					Parameters:  params,
+				},
+			},
+		})
+	}
+	return tools
+}
+
+func schemaToMap(s *llm.Schema) map[string]any {
+	if s == nil {
+		return nil
+	}
+	m := map[string]any{
+		"type": s.Type,
+	}
+	if len(s.Properties) > 0 {
+		props := make(map[string]any)
+		for k, v := range s.Properties {
+			props[k] = schemaToMap(v)
+		}
+		m["properties"] = props
+	}
+	if len(s.Required) > 0 {
+		m["required"] = s.Required
+	}
+	if s.Description != "" {
+		m["description"] = s.Description
+	}
+	if len(s.Enum) > 0 {
+		m["enum"] = s.Enum
+	}
+	if s.Format != "" {
+		m["format"] = s.Format
+	}
+	if s.Items != nil {
+		m["items"] = schemaToMap(s.Items)
+	}
+	return m
+}
+
+func messagesToOpenAI(systemPrompt string, messages []*llm.ChatMessage) []openai.ChatCompletionMessageParamUnion {
+	var result []openai.ChatCompletionMessageParamUnion
+	result = append(result, openai.SystemMessage(systemPrompt))
+
+	for _, msg := range messages {
+		switch msg.Role {
+		case "user":
+			result = append(result, openai.UserMessage(msg.Content))
+		case "assistant":
+			if msg.FunctionCall != nil {
+				argsJSON, _ := json.Marshal(msg.FunctionCall.Args)
+				result = append(result, openai.ChatCompletionMessageParamUnion{
+					OfAssistant: &openai.ChatCompletionAssistantMessageParam{
+						ToolCalls: []openai.ChatCompletionMessageToolCallUnionParam{
+							{
+								OfFunction: &openai.ChatCompletionMessageFunctionToolCallParam{
+									ID: msg.FunctionCall.ID,
+									Function: openai.ChatCompletionMessageFunctionToolCallFunctionParam{
+										Name:      msg.FunctionCall.Name,
+										Arguments: string(argsJSON),
+									},
+								},
+							},
+						},
+					},
+				})
+			} else {
+				result = append(result, openai.AssistantMessage(msg.Content))
+			}
+		case "tool":
+			resultJSON, _ := json.Marshal(msg.FunctionResponse.Response)
+			result = append(result, openai.ToolMessage(string(resultJSON), msg.FunctionResponse.CallID))
+		}
+	}
+	return result
+}
+
 func (ps *PromptSession) Run(ctx context.Context) {
 	ctx = query.ContextWith(ctx, ps.query)
-	geminiClient, err := genai.NewClient(ctx, &genai.ClientConfig{
-		APIKey:  config.GetConfig().GeminiKey,
-		Backend: genai.BackendGeminiAPI,
-	})
-	if err != nil {
-		log.Printf("error creating Gemini client: %v\n", err)
-		_ = ps.conn.Close(websocket.StatusInternalError, "Error creating client.")
-		return
-	}
+	cfg := config.GetConfig()
+	client := newOpenAIClient()
 
-	var messages []*genai.Content
-	messages = append(messages, &genai.Content{
-		Parts: []*genai.Part{{Text: ps.prompt}},
-		Role:  "user",
+	var messages []*llm.ChatMessage
+	messages = append(messages, &llm.ChatMessage{
+		Role:    "user",
+		Content: ps.prompt,
 	})
 
 	if ps.originalThreadId != "" {
-		var threadContext *persistence.ThreadContext
-		ctx, threadContext, err = ps.restoreContext(ctx, ps.originalThreadId)
+		threadContext, err := ps.restoreContextFromThread(ctx, ps.originalThreadId)
 		if err != nil {
 			log.Printf("error restoring thread: %v\n", err)
 			_ = ps.conn.Close(websocket.StatusInternalError, "Error restoring thread.")
@@ -134,7 +209,6 @@ func (ps *PromptSession) Run(ctx context.Context) {
 	}
 	log.Printf("user %d has used %d / %d credits\n", user.UserId, used, remaining)
 	totalInputTokens := 0
-	totalCachedInputTokens := 0
 	totalOutputTokens := 0
 	iterations := 0
 	for {
@@ -142,58 +216,68 @@ func (ps *PromptSession) Run(ctx context.Context) {
 			ctx, span := beeline.StartSpan(ctx, "chat_iteration")
 			defer span.Send()
 			iterations++
-			var tools []*genai.Tool
+			var tools []openai.ChatCompletionToolUnionParam
 			if iterations <= 10 {
-				tools = []*genai.Tool{{FunctionDeclarations: functions.GetFunctionDefinitionsForCapabilities(query.SupportedActionsFromContext(ctx))}}
+				defs := functions.GetFunctionDefinitionsForCapabilities(query.SupportedActionsFromContext(ctx))
+				tools = toOpenAITools(defs)
 			}
 			systemPrompt := ps.generateSystemPrompt(ctx)
 			streamCtx, streamSpan := beeline.StartSpan(ctx, "chat_stream")
-			temperature := float32(0.5)
-			zero := int32(0)
-			s := geminiClient.Models.GenerateContentStream(streamCtx, "models/gemini-2.5-flash", messages, &genai.GenerateContentConfig{
-				SystemInstruction: &genai.Content{Parts: []*genai.Part{{Text: systemPrompt}}},
-				Temperature:       &temperature,
-				CandidateCount:    1,
-				Tools:             tools,
-				ThinkingConfig: &genai.ThinkingConfig{
-					IncludeThoughts: false,
-					ThinkingBudget:  &zero,
-				},
-			})
-			var functionCall *genai.FunctionCall
-			content := ""
-			var usageData *genai.GenerateContentResponseUsageMetadata
+
+			params := openai.ChatCompletionNewParams{
+				Model:       openai.ChatModel(cfg.Model),
+				Messages:    messagesToOpenAI(systemPrompt, messages),
+				Temperature: openai.Float(0.5),
+			}
+			if len(tools) > 0 {
+				params.Tools = tools
+			}
+
+			stream := client.Chat.Completions.NewStreaming(streamCtx, params)
+
+			var functionCall *llm.FunctionCall
+			var content strings.Builder
+			var currentToolCallID string
+			var currentToolCallName string
+			var currentToolCallArgs strings.Builder
 			bufferedContent := ""
 			leftTrimming := false
+			var usagePromptTokens int
+			var usageCompletionTokens int
+
 		read_loop:
-			for resp, err := range s {
-				if errors.Is(err, iterator.Done) {
-					break
+			for stream.Next() {
+				evt := stream.Current()
+				if evt.Usage.PromptTokens > 0 || evt.Usage.CompletionTokens > 0 {
+					usagePromptTokens = int(evt.Usage.PromptTokens)
+					usageCompletionTokens = int(evt.Usage.CompletionTokens)
 				}
-				if err != nil {
-					streamSpan.AddField("error", err)
-					log.Printf("recv from Google failed: %v\n", err)
-					// This comes up when Google is over capacity, which does happen sometimes.
-					// There's nothing we can really do here, though we could blame them instead of ourselves.
-					_ = ps.conn.Close(websocket.StatusInternalError, "Bobby is unavailable right now. Please try again in a few moments.")
-					streamSpan.Send()
-					return false, err
-				}
-				usageData = resp.UsageMetadata
-				if len(resp.Candidates) == 0 {
+				if len(evt.Choices) == 0 {
 					continue
 				}
-				choice := resp.Candidates[0]
-				ourContent := ""
-				for _, c := range choice.Content.Parts {
-					if c.Text != "" {
-						ourContent += fixUnsupportedCharacters(c.Text)
-					}
-					if c.FunctionCall != nil {
-						fc := *c.FunctionCall
-						functionCall = &fc
+				choice := evt.Choices[0]
+				ourContent := choice.Delta.Content
+
+				if len(choice.Delta.ToolCalls) > 0 {
+					for _, tc := range choice.Delta.ToolCalls {
+						if tc.ID != "" {
+							if currentToolCallID != "" {
+								var args map[string]any
+								_ = json.Unmarshal([]byte(currentToolCallArgs.String()), &args)
+								functionCall = &llm.FunctionCall{
+									ID:   currentToolCallID,
+									Name: currentToolCallName,
+									Args: args,
+								}
+							}
+							currentToolCallID = tc.ID
+							currentToolCallName = tc.Function.Name
+							currentToolCallArgs.Reset()
+						}
+						currentToolCallArgs.WriteString(tc.Function.Arguments)
 					}
 				}
+
 				if bufferedContent != "" {
 					bufferedContent += ourContent
 					closers := strings.Count(bufferedContent, "!>") + strings.Count(bufferedContent, "/>")
@@ -238,8 +322,6 @@ func (ps *PromptSession) Run(ctx context.Context) {
 							}
 						}
 					}
-					// If the last thing we generated was a widget, it's possible the model will try to put some
-					// newlines or spaces in front of the next text. We don't want that, so strip it out.
 					if leftTrimming {
 						streamContent = strings.TrimLeft(streamContent, " \r\n\t")
 					}
@@ -264,38 +346,53 @@ func (ps *PromptSession) Run(ctx context.Context) {
 						}
 					}
 				}
-				content += ourContent
+				content.WriteString(ourContent)
 			}
+			if err := stream.Err(); err != nil {
+				streamSpan.AddField("error", err)
+				log.Printf("recv from LLM failed: %v\n", err)
+				_ = ps.conn.Close(websocket.StatusInternalError, "Bobby is unavailable right now. Please try again in a few moments.")
+				streamSpan.Send()
+				return false, err
+			}
+
+			if currentToolCallID != "" {
+				var args map[string]any
+				_ = json.Unmarshal([]byte(currentToolCallArgs.String()), &args)
+				functionCall = &llm.FunctionCall{
+					ID:   currentToolCallID,
+					Name: currentToolCallName,
+					Args: args,
+				}
+			}
+
 			streamSpan.Send()
-			if usageData != nil {
-				if usageData.PromptTokenCount != 0 {
-					_, err = qt.ChargeInputQuota(ctx, int(usageData.PromptTokenCount), int(usageData.CachedContentTokenCount))
-					if err != nil {
-						log.Printf("charge input quota failed: %v\n", err)
-					}
-					totalInputTokens += int(usageData.PromptTokenCount)
-					totalCachedInputTokens += int(usageData.CachedContentTokenCount)
+
+			if usagePromptTokens > 0 {
+				_, err = qt.ChargeInputQuota(ctx, usagePromptTokens, 0)
+				if err != nil {
+					log.Printf("charge input quota failed: %v\n", err)
 				}
-				if usageData.CandidatesTokenCount != 0 {
-					_, err = qt.ChargeOutputQuota(ctx, int(usageData.CandidatesTokenCount))
-					if err != nil {
-						log.Printf("charge output quota failed: %v\n", err)
-					}
-					totalOutputTokens += int(usageData.CandidatesTokenCount)
-				}
+				totalInputTokens += usagePromptTokens
 			}
-			if len(strings.TrimSpace(content)) > 0 {
-				messages = append(messages, &genai.Content{
-					Parts: []*genai.Part{{Text: content}},
-					Role:  "model",
+			if usageCompletionTokens > 0 {
+				_, err = qt.ChargeOutputQuota(ctx, usageCompletionTokens)
+				if err != nil {
+					log.Printf("charge output quota failed: %v\n", err)
+				}
+				totalOutputTokens += usageCompletionTokens
+			}
+
+			if len(strings.TrimSpace(content.String())) > 0 {
+				messages = append(messages, &llm.ChatMessage{
+					Role:    "assistant",
+					Content: content.String(),
 				})
 			}
 			if functionCall != nil {
-				messages = append(messages, &genai.Content{
-					Role: "model",
-					Parts: []*genai.Part{
-						{FunctionCall: functionCall},
-					},
+				messages = append(messages, &llm.ChatMessage{
+					Role:         "assistant",
+					FunctionCall: functionCall,
 				})
 				log.Printf("calling function %s\n", functionCall.Name)
 				fnBytes, _ := json.Marshal(functionCall.Args)
@@ -305,7 +402,6 @@ func (ps *PromptSession) Run(ctx context.Context) {
 					return false, err
 				}
 				var result string
-				var err error
 				if functions.IsAction(functionCall.Name) {
 					result, err = functions.CallAction(ctx, qt, functionCall.Name, fnArgs, ps.conn)
 				} else {
@@ -317,13 +413,12 @@ func (ps *PromptSession) Run(ctx context.Context) {
 				}
 				var mapResult map[string]any
 				_ = json.Unmarshal([]byte(result), &mapResult)
-				messages = append(messages, &genai.Content{
-					Role: "function",
-					Parts: []*genai.Part{
-						{FunctionResponse: &genai.FunctionResponse{
-							Name:     functionCall.Name,
-							Response: mapResult,
-						}},
+				messages = append(messages, &llm.ChatMessage{
+					Role: "tool",
+					FunctionResponse: &llm.FunctionResponse{
+						CallID:   functionCall.ID,
+						Name:     functionCall.Name,
+						Response: mapResult,
 					},
 				})
 				return true, nil
@@ -377,8 +472,7 @@ func (ps *PromptSession) Run(ctx context.Context) {
 
 	beeline.AddField(ctx, "total_input_tokens", totalInputTokens)
 	beeline.AddField(ctx, "total_output_tokens", totalOutputTokens)
-	beeline.AddField(ctx, "total_cached_output_tokens", totalCachedInputTokens)
-	beeline.AddField(ctx, "total_cost", (totalInputTokens-totalCachedInputTokens)*quota.InputTokenCredits+totalCachedInputTokens*quota.CachedInputTokenCredits+totalOutputTokens*quota.OutputTokenCredits)
+	beeline.AddField(ctx, "total_cost", totalInputTokens*quota.InputTokenCredits+totalOutputTokens*quota.OutputTokenCredits)
 	if err := ps.storeThread(ctx, messages); err != nil {
 		log.Printf("store thread failed: %v\n", err)
 		_ = ps.conn.Close(websocket.StatusInternalError, "store thread failed")
@@ -391,37 +485,35 @@ func (ps *PromptSession) Run(ctx context.Context) {
 	_ = ps.conn.Close(websocket.StatusNormalClosure, "")
 }
 
+// Replace the narrow non-breaking space with a regular non-breaking space.
 func fixUnsupportedCharacters(s string) string {
-	// Replace the narrow non-breaking space with a regular non-breaking space.
 	return strings.ReplaceAll(s, "\u202f", "\u00a0")
 }
 
-func (ps *PromptSession) storeThread(ctx context.Context, messages []*genai.Content) error {
+func (ps *PromptSession) storeThread(ctx context.Context, messages []*llm.ChatMessage) error {
 	ctx, span := beeline.StartSpan(ctx, "store_thread")
 	defer span.Send()
 	var toStore []persistence.SerializedMessage
 	for _, m := range messages {
-		if len(m.Parts) != 0 {
-			if m.Role == "user" || m.Role == "model" {
-				sm := persistence.SerializedMessage{
-					Role:         m.Role,
-					Content:      m.Parts[0].Text,
-					FunctionCall: m.Parts[0].FunctionCall,
-				}
-				if sm.FunctionCall != nil || len(strings.TrimSpace(m.Parts[0].Text)) > 0 {
-					toStore = append(toStore, sm)
-				}
-			} else if m.Role == "function" && m.Parts[0].FunctionResponse != nil {
-				fr := *m.Parts[0].FunctionResponse
-				fnInfo := functions.GetFunctionRegistration(fr.Name)
-				if fnInfo != nil && fnInfo.RedactOutputInChatHistory {
-					fr.Response = map[string]any{"redacted": "redacted to reduce context size, call again if necessary"}
-				}
-				toStore = append(toStore, persistence.SerializedMessage{
-					Role:             m.Role,
-					FunctionResponse: &fr,
-				})
+		if m.Role == "user" || m.Role == "assistant" {
+			sm := persistence.SerializedMessage{
+				Role:         m.Role,
+				Content:      m.Content,
+				FunctionCall: m.FunctionCall,
 			}
+			if sm.FunctionCall != nil || len(strings.TrimSpace(m.Content)) > 0 {
+				toStore = append(toStore, sm)
+			}
+		} else if m.Role == "tool" && m.FunctionResponse != nil {
+			fr := *m.FunctionResponse
+			fnInfo := functions.GetFunctionRegistration(fr.Name)
+			if fnInfo != nil && fnInfo.RedactOutputInChatHistory {
+				fr.Response = map[string]any{"redacted": "redacted to reduce context size, call again if necessary"}
+			}
+			toStore = append(toStore, persistence.SerializedMessage{
+				Role:             m.Role,
+				FunctionResponse: &fr,
+			})
 		}
 	}
 	threadContext := query.ThreadContextFromContext(ctx)
@@ -429,22 +521,22 @@ func (ps *PromptSession) storeThread(ctx context.Context, messages []*genai.Cont
 	return persistence.StoreThread(ctx, ps.redis, threadContext)
 }
 
-func (ps *PromptSession) restoreContext(ctx context.Context, oldThreadId string) (context.Context, *persistence.ThreadContext, error) {
+func (ps *PromptSession) restoreContextFromThread(ctx context.Context, oldThreadId string) (*persistence.ThreadContext, error) {
 	threadContext, err := persistence.LoadThread(ctx, ps.redis, oldThreadId)
 	if err != nil {
-		return ctx, nil, err
+		return nil, err
 	}
-	ctx = query.ContextWithThread(ctx, threadContext)
-
-	return ctx, threadContext, nil
+	return threadContext, nil
 }
 
-func (ps *PromptSession) restoreThread(threadContext *persistence.ThreadContext) []*genai.Content {
-	var result []*genai.Content
+func (ps *PromptSession) restoreThread(threadContext *persistence.ThreadContext) []*llm.ChatMessage {
+	var result []*llm.ChatMessage
 	for _, m := range threadContext.Messages {
-		result = append(result, &genai.Content{
-			Parts: []*genai.Part{{Text: m.Content, FunctionCall: m.FunctionCall, FunctionResponse: m.FunctionResponse}},
-			Role:  m.Role,
+		result = append(result, &llm.ChatMessage{
+			Content:          m.Content,
+			Role:             m.Role,
+			FunctionCall:     m.FunctionCall,
+			FunctionResponse: m.FunctionResponse,
 		})
 	}
 	return result

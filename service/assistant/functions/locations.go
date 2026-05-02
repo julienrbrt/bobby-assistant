@@ -3,10 +3,10 @@ package functions
 import (
 	"context"
 	"fmt"
+	"github.com/pebble-dev/bobby-assistant/service/assistant/llm"
 	"github.com/pebble-dev/bobby-assistant/service/assistant/query"
 	"github.com/pebble-dev/bobby-assistant/service/assistant/util/mapbox"
 	"github.com/umahmood/haversine"
-	"google.golang.org/genai"
 
 	"github.com/honeycombio/beeline-go"
 	"github.com/pebble-dev/bobby-assistant/service/assistant/quota"
@@ -25,19 +25,16 @@ type GetLocationInput struct {
 }
 
 func init() {
-	f := false
 	registerFunction(Registration{
-		Definition: genai.FunctionDeclaration{
+		Definition: llm.FunctionDecl{
 			Name:        "get_location",
 			Description: "Get the latitude and longitude of a given location. If the user's location is available, also provides the distance from the user.",
-			Parameters: &genai.Schema{
-				Type:     genai.TypeObject,
-				Nullable: &f,
-				Properties: map[string]*genai.Schema{
+			Parameters: &llm.Schema{
+				Type: "object",
+				Properties: map[string]*llm.Schema{
 					"place_name": {
-						Type:        genai.TypeString,
+						Type:        "string",
 						Description: `The name of a place to locate, e.g. "San Francisco, CA, USA" or "Paris, France".`,
-						Nullable:    &f,
 					},
 				},
 				Required: []string{"place_name"},

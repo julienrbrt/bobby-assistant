@@ -29,7 +29,7 @@ var reportTemplateString string
 var funcMap = template.FuncMap{"jsonify": jsonify}
 var reportTemplate = template.Must(template.New("report").Funcs(funcMap).Parse(reportTemplateString))
 
-func jsonify(v interface{}) interface{} {
+func jsonify(v any) any {
 	b, err := json.MarshalIndent(v, "", "  ")
 	if err != nil {
 		return v

@@ -18,13 +18,13 @@ import (
 	"context"
 	"fmt"
 	"github.com/honeycombio/beeline-go"
+	"github.com/pebble-dev/bobby-assistant/service/assistant/llm"
 	"github.com/pebble-dev/bobby-assistant/service/assistant/query"
 	"github.com/pebble-dev/bobby-assistant/service/assistant/quota"
 	"github.com/pebble-dev/bobby-assistant/service/assistant/util"
 	"github.com/pebble-dev/bobby-assistant/service/assistant/util/mapbox"
 	"github.com/umahmood/haversine"
 	"google.golang.org/api/places/v1"
-	"google.golang.org/genai"
 	"log"
 	"strings"
 )
@@ -35,28 +35,23 @@ type POIResponse struct {
 }
 
 func init() {
-	f := false
-	t := true
 	registerFunction(Registration{
-		Definition: genai.FunctionDeclaration{
+		Definition: llm.FunctionDecl{
 			Name:        "poi",
 			Description: "Look up points of interest near the user's location (or another named location).",
-			Parameters: &genai.Schema{
-				Type:     genai.TypeObject,
-				Nullable: &f,
-				Properties: map[string]*genai.Schema{
+			Parameters: &llm.Schema{
+				Type: "object",
+				Properties: map[string]*llm.Schema{
 					"query": {
-						Type:        genai.TypeString,
+						Type:        "string",
 						Description: "The search query to use to find points of interest. Could be a name (e.g. \"McDonald's\"), a category (e.g. \"restaurant\" or \"pizza\"), or another search term.",
-						Nullable:    &f,
 					},
 					"location": {
-						Type:        genai.TypeString,
+						Type:        "string",
 						Description: "The name of the location to search near. If not provided, the user's current location will be used. Assume that no location should be provided unless explicitly requested: not providing one results in more accurate answers.",
-						Nullable:    &t,
 					},
 					"languageCode": {
-						Type:        genai.TypeString,
+						Type:        "string",
 						Description: "The language code (e.g. `es` or `pt-BR`) to use for the search results.",
 					},
 				},

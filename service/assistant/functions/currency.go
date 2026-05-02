@@ -20,7 +20,7 @@ import (
 	"log"
 
 	"github.com/honeycombio/beeline-go"
-	"google.golang.org/genai"
+	"github.com/pebble-dev/bobby-assistant/service/assistant/llm"
 
 	"github.com/pebble-dev/bobby-assistant/service/assistant/quota"
 	"github.com/pebble-dev/bobby-assistant/service/assistant/util/currencies"
@@ -38,28 +38,24 @@ type CurrencyConversionResponse struct {
 }
 
 func init() {
-	f := false
 	registerFunction(Registration{
-		Definition: genai.FunctionDeclaration{
+		Definition: llm.FunctionDecl{
 			Name:        "convert_currency",
 			Description: "Convert an amount of one (real, non-crypto) currency to another. *Always* call this function to get exchange rates when doing currency conversion - never use memorised rates.",
-			Parameters: &genai.Schema{
-				Type:     genai.TypeObject,
-				Nullable: &f,
-				Properties: map[string]*genai.Schema{
+			Parameters: &llm.Schema{
+				Type: "object",
+				Properties: map[string]*llm.Schema{
 					"amount": {
-						Type:        genai.TypeNumber,
+						Type:        "number",
 						Format:      "double",
 						Description: "The amount of currency to convert.",
-						Nullable:    &f,
 					},
 					"from": {
-						Type:        genai.TypeString,
+						Type:        "string",
 						Description: "The currency code to convert from.",
-						Nullable:    &f,
 					},
 					"to": {
-						Type:        genai.TypeString,
+						Type:        "string",
 						Description: "The currency code to convert to.",
 					},
 				},

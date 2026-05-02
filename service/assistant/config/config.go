@@ -25,7 +25,8 @@ import (
 
 type Config struct {
 	BaseURL                string
-	GeminiKey              string
+	APIKey                 string
+	Model                  string
 	MapboxKey              string
 	IBMKey                 string
 	ExchangeRateApiKey     string
@@ -55,7 +56,8 @@ func init() {
 
 	c = Config{
 		BaseURL:                os.Getenv("BASE_URL"),
-		GeminiKey:              os.Getenv("GEMINI_KEY"),
+		APIKey:                 os.Getenv("API_KEY"),
+		Model:                  os.Getenv("MODEL"),
 		MapboxKey:              os.Getenv("MAPBOX_KEY"),
 		IBMKey:                 os.Getenv("IBM_KEY"),
 		ExchangeRateApiKey:     os.Getenv("EXCHANGE_RATE_API_KEY"),

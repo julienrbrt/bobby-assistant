@@ -1,0 +1,1 @@
+Bobby uses an OpenAI-compatible API to process requests. To do this, all of your requests will be sent verbatim to the configured LLM provider. If you do not agree, you cannot use Bobby.
