@@ -24,12 +24,7 @@ exports.setReminder = function(session, message, callback) {
     reminders.addReminder(what, when);
     var unixTime = (new Date(when)).getTime() / 1000;
     session.enqueue({ACTION_REMINDER_WAS_SET: unixTime});
-    
-    if (unixTime < (new Date()).getTime() / 1000 + 3600) {
-      callback({"warning": "Your reminder was set. It is **critical** you warn the user: Due to timeline delays, reminders set in the near future may not appear on time."});
-    } else {
-      callback({"status": "ok"});
-    }
+    callback({"status": "ok"});
   } catch (err) {
     callback({"error": "Failed to set reminder: " + err.message});
   }

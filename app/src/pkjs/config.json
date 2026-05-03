@@ -144,6 +144,22 @@
         "items": [
             {
                 "type": "heading",
+                "defaultValue": "Server"
+            },
+            {
+                "type": "input",
+                "messageKey": "SERVER_URL",
+                "label": "Server URL",
+                "description": "The WebSocket URL of your Bobby server (e.g. wss://my-server.com/query).",
+                "defaultValue": "ws://localhost:8080/query"
+            }
+        ]
+    },
+    {
+        "type": "section",
+        "items": [
+            {
+                "type": "heading",
                 "defaultValue": "LLM Configuration"
             },
             {

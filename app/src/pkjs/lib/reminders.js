@@ -14,9 +14,6 @@
  * limitations under the License.
  */
 
-var timeline = require('../actions/timeline');
-
-// Store reminders in localStorage
 var REMINDERS_STORAGE_KEY = 'bobby_reminders';
 // Keep expired reminders for 24 hours before cleanup
 var EXPIRED_REMINDER_TTL = 24 * 60 * 60 * 1000; // 24 hours in milliseconds
@@ -76,9 +73,6 @@ function addReminder(text, time) {
     }]
   };
 
-  // Insert into timeline first - if this fails it will throw
-  timeline.insertUserPin(pin);
-
   // Store reminder locally
   var reminders = loadReminders();
   reminders.push({
@@ -108,9 +102,6 @@ function deleteReminder(id) {
     return false;
   }
   
-  // Remove from timeline first - if this fails it will throw
-  timeline.deleteUserPin(id);
-
   // Remove from local storage
   reminders.splice(reminderIndex, 1);
   saveReminders(reminders);

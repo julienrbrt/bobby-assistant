@@ -23,7 +23,6 @@ var widgets = require('./widgets');
 var messageQueue = require('./lib/message_queue').Queue;
 var features = require('./features');
 
-var API_URL = require('./urls').QUERY_URL;
 var package_json = require('package.json');
 
 function Session(prompt, threadId) {
@@ -42,7 +41,8 @@ Session.prototype.run = function() {
         messageQueue.startLogging();
     }
     console.log("Opening websocket connection...");
-    var url = API_URL + '?prompt=' + encodeURIComponent(this.prompt);
+    var settings = getSettings();
+    var url = (settings['SERVER_URL'] || 'ws://localhost:8080/query') + '?prompt=' + encodeURIComponent(this.prompt);
     if (location.isReady() && config.isLocationEnabled()) {
         var loc = location.getPos();
         url += '&lon=' + loc.lon + '&lat=' + loc.lat;
