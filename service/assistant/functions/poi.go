@@ -22,7 +22,7 @@ import (
 	"github.com/openai/openai-go/v3/shared"
 	"github.com/pebble-dev/bobby-assistant/service/assistant/query"
 	"github.com/pebble-dev/bobby-assistant/service/assistant/util"
-	"github.com/pebble-dev/bobby-assistant/service/assistant/util/mapbox"
+	"github.com/pebble-dev/bobby-assistant/service/assistant/util/geocoding"
 	"github.com/umahmood/haversine"
 	"google.golang.org/api/places/v1"
 	"log"
@@ -87,7 +87,7 @@ func searchPoi(ctx context.Context, args any) any {
 	}
 	location := query.LocationFromContext(ctx)
 	if poiQuery.Location != "" {
-		coords, err := mapbox.GeocodeWithContext(ctx, poiQuery.Location)
+		coords, err := geocoding.Geocode(ctx, poiQuery.Location)
 		if err != nil {
 			return Error{Error: "Error finding location: " + err.Error()}
 		}

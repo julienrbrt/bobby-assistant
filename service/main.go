@@ -10,6 +10,7 @@ import (
 	"github.com/pebble-dev/bobby-assistant/service/assistant"
 	"github.com/pebble-dev/bobby-assistant/service/assistant/config"
 	"github.com/pebble-dev/bobby-assistant/service/assistant/persistence"
+	"github.com/pebble-dev/bobby-assistant/service/assistant/util/geocoding"
 	"github.com/pebble-dev/bobby-assistant/service/assistant/util/redact"
 	"github.com/pebble-dev/bobby-assistant/service/assistant/util/storage"
 )
@@ -30,6 +31,12 @@ func main() {
 
 	db := storage.GetDB()
 	persistence.InitDB(db)
+	cfg := config.GetConfig()
+	if cfg.GoogleMapsStaticKey != "" {
+		if err := geocoding.Init(cfg.GoogleMapsStaticKey, cfg.GoogleMapsStaticSecret); err != nil {
+			log.Fatalf("geocoding.Init: %s", err)
+		}
+	}
 	service := assistant.NewService(db)
 	addr := "0.0.0.0:8080"
 	log.Printf("Listening on %s.", addr)

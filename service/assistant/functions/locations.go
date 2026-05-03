@@ -21,7 +21,7 @@ import (
 	"github.com/openai/openai-go/v3"
 	"github.com/openai/openai-go/v3/shared"
 	"github.com/pebble-dev/bobby-assistant/service/assistant/query"
-	"github.com/pebble-dev/bobby-assistant/service/assistant/util/mapbox"
+	"github.com/pebble-dev/bobby-assistant/service/assistant/util/geocoding"
 	"github.com/umahmood/haversine"
 )
 
@@ -69,7 +69,7 @@ func getLocationImpl(ctx context.Context, args any) any {
 	ctx = span.Context()
 	defer span.Finish()
 	arg := args.(*GetLocationInput)
-	location, err := mapbox.GeocodeWithContext(ctx, arg.PlaceName)
+	location, err := geocoding.Geocode(ctx, arg.PlaceName)
 	if err != nil {
 		return fmt.Errorf("failed to geocode %q: %w", arg.PlaceName, err)
 	}

@@ -17,7 +17,7 @@ package assistant
 import (
 	"context"
 	"github.com/getsentry/sentry-go"
-	"github.com/pebble-dev/bobby-assistant/service/assistant/util/mapbox"
+	"github.com/pebble-dev/bobby-assistant/service/assistant/util/geocoding"
 	"log"
 	"strconv"
 	"time"
@@ -64,15 +64,12 @@ func generateLanguageSentence(ctx context.Context) string {
 }
 
 func (ps *PromptSession) getPlaceFromLocation(ctx context.Context) (string, error) {
-	// Use the Mapbox API to turn the user's longitude and latitude into a place name.
-	// We don't want anything more specific than their town name, so we filter at that level ("place" in Mapbox terms).
-	// We will return just a region or country if there isn't a nearby place.
 	location := query.LocationFromContext(ctx)
-	feature, err := mapbox.ReverseGeocode(ctx, location.Lon, location.Lat)
+	result, err := geocoding.ReverseGeocode(ctx, location.Lon, location.Lat)
 	if err != nil {
 		return "", err
 	}
-	return feature.PlaceName, nil
+	return result.FormattedAddress, nil
 }
 
 func generateWidgetSentence(ctx context.Context) string {

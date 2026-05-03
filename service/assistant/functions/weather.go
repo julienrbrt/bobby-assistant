@@ -21,7 +21,7 @@ import (
 	"github.com/openai/openai-go/v3"
 	"github.com/openai/openai-go/v3/shared"
 	"github.com/pebble-dev/bobby-assistant/service/assistant/query"
-	"github.com/pebble-dev/bobby-assistant/service/assistant/util/mapbox"
+	"github.com/pebble-dev/bobby-assistant/service/assistant/util/geocoding"
 	"github.com/pebble-dev/bobby-assistant/service/assistant/util/weather"
 	"strings"
 )
@@ -96,7 +96,7 @@ func getWeather(ctx context.Context, args any) any {
 		arg.Location = ""
 	}
 	if arg.Location != "" {
-		coords, err := mapbox.GeocodeWithContext(ctx, arg.Location)
+		coords, err := geocoding.Geocode(ctx, arg.Location)
 		if err != nil {
 			return Error{"Error finding location: " + err.Error()}
 		}
