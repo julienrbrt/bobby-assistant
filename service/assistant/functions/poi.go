@@ -17,7 +17,7 @@ package functions
 import (
 	"context"
 	"fmt"
-	"github.com/honeycombio/beeline-go"
+	"github.com/getsentry/sentry-go"
 	"github.com/openai/openai-go/v3"
 	"github.com/openai/openai-go/v3/shared"
 	"github.com/pebble-dev/bobby-assistant/service/assistant/query"
@@ -75,8 +75,9 @@ func searchPoiThought(args any) string {
 }
 
 func searchPoi(ctx context.Context, quotaTracker *quota.Tracker, args any) any {
-	ctx, span := beeline.StartSpan(ctx, "search_poi")
-	defer span.Send()
+	span := sentry.StartSpan(ctx, "search_poi")
+	ctx = span.Context()
+	defer span.Finish()
 	threadContext := query.ThreadContextFromContext(ctx)
 	poiQuery := args.(*util.POIQuery)
 	if threadContext.ContextStorage.PoiQuery != nil && poiQuery.Equal(threadContext.ContextStorage.PoiQuery) {
@@ -85,12 +86,10 @@ func searchPoi(ctx context.Context, quotaTracker *quota.Tracker, args any) any {
 			Results: threadContext.ContextStorage.POIs,
 		}
 	}
-	span.AddField("query", poiQuery.Query)
 	location := query.LocationFromContext(ctx)
 	if poiQuery.Location != "" {
 		coords, err := mapbox.GeocodeWithContext(ctx, poiQuery.Location)
 		if err != nil {
-			span.AddField("error", err)
 			return Error{Error: "Error finding location: " + err.Error()}
 		}
 		location = &query.Location{
@@ -99,19 +98,16 @@ func searchPoi(ctx context.Context, quotaTracker *quota.Tracker, args any) any {
 		}
 	}
 	if location == nil {
-		span.AddField("error", "no location provided")
 		return Error{Error: "Either the user must enable location in settings, or an explicit location parameter must be provided"}
 	}
 
 	placeService, err := places.NewService(ctx)
 	if err != nil {
-		span.AddField("error", err)
 		return Error{Error: "Error creating places service: " + err.Error()}
 	}
 	log.Printf("Searching for POIs matching %q", poiQuery.Query)
 	err = quotaTracker.ChargeUserOrGlobalQuota(ctx, "gplaces_text_search", 1000, quota.PoiSearchCredits)
 	if err != nil {
-		span.AddField("error", err)
 		return Error{Error: "Error charging quota: " + err.Error()}
 	}
 	results, err := placeService.Places.SearchText(&places.GoogleMapsPlacesV1SearchTextRequest{
@@ -137,7 +133,6 @@ func searchPoi(ctx context.Context, quotaTracker *quota.Tracker, args any) any {
 	).Do()
 
 	if err != nil {
-		span.AddField("error", err)
 		log.Printf("Failed to search for POIs: %v", err)
 		return Error{Error: "Error searching for POIs: " + err.Error()}
 	}

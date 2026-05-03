@@ -4,7 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/honeycombio/beeline-go"
+	"github.com/getsentry/sentry-go"
 	"github.com/pebble-dev/bobby-assistant/service/assistant/config"
 	"github.com/pebble-dev/bobby-assistant/service/assistant/query"
 	"net/http"
@@ -54,26 +54,24 @@ type TimePoint struct {
 }
 
 func GeocodingRequest(ctx context.Context, search string, params url.Values) (*FeatureCollection, error) {
-	ctx, span := beeline.StartSpan(ctx, "mapbox.geocoding")
-	defer span.Send()
+	span := sentry.StartSpan(ctx, "mapbox.geocoding")
+	ctx = span.Context()
+	defer span.Finish()
 	if !params.Has("limit") {
 		params.Set("limit", "1")
 	}
 	params.Set("access_token", config.GetConfig().MapboxKey)
 	req, err := http.NewRequestWithContext(ctx, "GET", "https://api.mapbox.com/geocoding/v5/mapbox.places/"+url.PathEscape(search)+".json?"+params.Encode(), nil)
 	if err != nil {
-		span.AddField("error", err)
 		return nil, err
 	}
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
-		span.AddField("error", err)
 		return nil, err
 	}
 	defer resp.Body.Close()
 	var collection FeatureCollection
 	if err := json.NewDecoder(resp.Body).Decode(&collection); err != nil {
-		span.AddField("error", err)
 		return nil, err
 	}
 	return &collection, nil
@@ -120,23 +118,21 @@ func GeocodeWithContext(ctx context.Context, search string) (Location, error) {
 }
 
 func SearchBoxRequest(ctx context.Context, params url.Values) (*FeatureCollection, error) {
-	ctx, span := beeline.StartSpan(ctx, "mapbox.searchbox")
-	defer span.Send()
+	span := sentry.StartSpan(ctx, "mapbox.searchbox")
+	ctx = span.Context()
+	defer span.Finish()
 	params.Set("access_token", config.GetConfig().MapboxKey)
 	req, err := http.NewRequestWithContext(ctx, "GET", "https://api.mapbox.com/search/searchbox/v1/forward?"+params.Encode(), nil)
 	if err != nil {
-		span.AddField("error", err)
 		return nil, err
 	}
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
-		span.AddField("error", err)
 		return nil, err
 	}
 	defer resp.Body.Close()
 	var collection FeatureCollection
 	if err := json.NewDecoder(resp.Body).Decode(&collection); err != nil {
-		span.AddField("error", err)
 		return nil, err
 	}
 	return &collection, nil

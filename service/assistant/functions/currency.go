@@ -19,7 +19,7 @@ import (
 	"fmt"
 	"log"
 
-	"github.com/honeycombio/beeline-go"
+	"github.com/getsentry/sentry-go"
 	"github.com/openai/openai-go/v3"
 	"github.com/openai/openai-go/v3/shared"
 
@@ -70,8 +70,9 @@ func init() {
 }
 
 func convertCurrency(ctx context.Context, qt *quota.Tracker, input any) any {
-	ctx, span := beeline.StartSpan(ctx, "convert_currency")
-	defer span.Send()
+	span := sentry.StartSpan(ctx, "convert_currency")
+	ctx = span.Context()
+	defer span.Finish()
 	ccr := input.(*CurrencyConversionRequest)
 
 	if !currencies.IsValidCurrency(ccr.From) {

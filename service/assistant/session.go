@@ -3,7 +3,7 @@ package assistant
 import (
 	"context"
 	"encoding/json"
-	"github.com/honeycombio/beeline-go"
+	"github.com/getsentry/sentry-go"
 	"github.com/pebble-dev/bobby-assistant/service/assistant/llm"
 	"github.com/pebble-dev/bobby-assistant/service/assistant/persistence"
 	"github.com/pebble-dev/bobby-assistant/service/assistant/quota"
@@ -139,9 +139,10 @@ func (ps *PromptSession) Run(ctx context.Context) {
 		_ = ps.conn.Close(websocket.StatusInternalError, "get user info failed")
 		return
 	}
-	beeline.AddField(ctx, "user_id", user.UserId)
+	if hub := sentry.GetHubFromContext(ctx); hub != nil {
+		hub.Scope().SetTag("user_id", string(rune(user.UserId)))
+	}
 	if !user.HasSubscription {
-		beeline.AddField(ctx, "error", "no subscription")
 		log.Printf("user %d has no subscription\n", user.UserId)
 		_ = ps.conn.Close(websocket.StatusPolicyViolation, "You need an active Rebble subscription to use Bobby.")
 		return
@@ -164,15 +165,17 @@ func (ps *PromptSession) Run(ctx context.Context) {
 	iterations := 0
 	for {
 		cont, err := func() (bool, error) {
-			ctx, span := beeline.StartSpan(ctx, "chat_iteration")
-			defer span.Send()
+			span := sentry.StartSpan(ctx, "chat_iteration")
+			ctx = span.Context()
+			defer span.Finish()
 			iterations++
 			var tools []openai.ChatCompletionToolUnionParam
 			if iterations <= 10 {
 				tools = functions.GetFunctionDefinitionsForCapabilities(query.SupportedActionsFromContext(ctx))
 			}
 			systemPrompt := ps.generateSystemPrompt(ctx)
-			streamCtx, streamSpan := beeline.StartSpan(ctx, "chat_stream")
+			streamSpan := sentry.StartSpan(ctx, "chat_stream")
+			streamCtx := streamSpan.Context()
 
 			params := openai.ChatCompletionNewParams{
 				Model:       openai.ChatModel(cfg.LLMModel),
@@ -186,7 +189,7 @@ func (ps *PromptSession) Run(ctx context.Context) {
 			stream := client.Chat.Completions.NewStreaming(streamCtx, params)
 
 			var functionCall *llm.FunctionCall
-			content := ""
+			var content strings.Builder
 			var currentToolCallID string
 			var currentToolCallName string
 			var currentToolCallArgs strings.Builder
@@ -288,7 +291,7 @@ func (ps *PromptSession) Run(ctx context.Context) {
 								w += " "
 							}
 							if err := ps.conn.Write(streamCtx, websocket.MessageText, []byte("c"+w)); err != nil {
-								streamSpan.AddField("error", err)
+								sentry.GetHubFromContext(streamCtx).CaptureException(err)
 								log.Printf("write to websocket failed: %v\n", err)
 								break read_loop
 							}
@@ -296,13 +299,13 @@ func (ps *PromptSession) Run(ctx context.Context) {
 						}
 					}
 				}
-				content += ourContent
+				content.WriteString(ourContent)
 			}
 			if err := stream.Err(); err != nil {
-				streamSpan.AddField("error", err)
+				sentry.GetHubFromContext(streamCtx).CaptureException(err)
 				log.Printf("recv from LLM failed: %v\n", err)
 				_ = ps.conn.Close(websocket.StatusInternalError, "Bobby is unavailable right now. Please try again in a few moments.")
-				streamSpan.Send()
+				streamSpan.Finish()
 				return false, err
 			}
 
@@ -316,7 +319,7 @@ func (ps *PromptSession) Run(ctx context.Context) {
 				}
 			}
 
-			streamSpan.Send()
+			streamSpan.Finish()
 
 			if usagePromptTokens > 0 {
 				_, err = qt.ChargeInputQuota(ctx, usagePromptTokens, 0)
@@ -333,10 +336,10 @@ func (ps *PromptSession) Run(ctx context.Context) {
 				totalOutputTokens += usageCompletionTokens
 			}
 
-			if len(strings.TrimSpace(content)) > 0 {
+			if len(strings.TrimSpace(content.String())) > 0 {
 				messages = append(messages, &llm.ChatMessage{
 					Role:    "assistant",
-					Content: content,
+					Content: content.String(),
 				})
 			}
 			if functionCall != nil {
@@ -391,7 +394,6 @@ func (ps *PromptSession) Run(ctx context.Context) {
 		log.Printf("find lies failed: %v\n", err)
 	}
 	if len(lies) > 0 {
-		beeline.AddField(ctx, "lies", lies)
 		log.Printf("lies detected: %v\n", lies)
 		var formattedLies []string
 		for _, l := range lies {
@@ -420,9 +422,7 @@ func (ps *PromptSession) Run(ctx context.Context) {
 		log.Printf("write to websocket failed: %v\n", err)
 	}
 
-	beeline.AddField(ctx, "total_input_tokens", totalInputTokens)
-	beeline.AddField(ctx, "total_output_tokens", totalOutputTokens)
-	beeline.AddField(ctx, "total_cost", totalInputTokens*quota.InputTokenCredits+totalOutputTokens*quota.OutputTokenCredits)
+	log.Printf("tokens - input: %d, output: %d, cost: %d\n", totalInputTokens, totalOutputTokens, totalInputTokens*quota.InputTokenCredits+totalOutputTokens*quota.OutputTokenCredits)
 	if err := ps.storeThread(ctx, messages); err != nil {
 		log.Printf("store thread failed: %v\n", err)
 		_ = ps.conn.Close(websocket.StatusInternalError, "store thread failed")
@@ -441,8 +441,9 @@ func fixUnsupportedCharacters(s string) string {
 }
 
 func (ps *PromptSession) storeThread(ctx context.Context, messages []*llm.ChatMessage) error {
-	ctx, span := beeline.StartSpan(ctx, "store_thread")
-	defer span.Send()
+	span := sentry.StartSpan(ctx, "store_thread")
+	defer span.Finish()
+	ctx = span.Context()
 	var toStore []persistence.SerializedMessage
 	for _, m := range messages {
 		if m.Role == "user" || m.Role == "assistant" {

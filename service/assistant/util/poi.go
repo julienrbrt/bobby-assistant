@@ -12,7 +12,7 @@ type POI struct {
 	RatingCount        int64
 	DistanceKilometers float64 `json:"DistanceKilometers,omitempty"`
 	DistanceMiles      float64 `json:"DistanceMiles,omitempty"`
-	Coordinates        Coords  `json:"Coordinates,omitempty"`
+	Coordinates        Coords  `json:"Coordinates"`
 }
 
 type POIQuery struct {

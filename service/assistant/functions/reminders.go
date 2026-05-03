@@ -19,7 +19,7 @@ import (
 	"log"
 	"time"
 
-	"github.com/honeycombio/beeline-go"
+	"github.com/getsentry/sentry-go"
 	"github.com/openai/openai-go/v3"
 	"github.com/openai/openai-go/v3/shared"
 	"github.com/pebble-dev/bobby-assistant/service/assistant/quota"
@@ -107,8 +107,9 @@ func init() {
 }
 
 func setReminder(ctx context.Context, quotaTracker *quota.Tracker, args any, requestChan chan<- map[string]any, responseChan <-chan map[string]any) any {
-	ctx, span := beeline.StartSpan(ctx, "set_reminder")
-	defer span.Send()
+	span := sentry.StartSpan(ctx, "set_reminder")
+	ctx = span.Context()
+	defer span.Finish()
 	if !query.SupportsAction(ctx, "set_reminder") {
 		return Error{Error: "You need to update the app on your watch to set reminders."}
 	}
@@ -136,8 +137,9 @@ func setReminder(ctx context.Context, quotaTracker *quota.Tracker, args any, req
 }
 
 func getReminders(ctx context.Context, quotaTracker *quota.Tracker, args any, requestChan chan<- map[string]any, responseChan <-chan map[string]any) any {
-	ctx, span := beeline.StartSpan(ctx, "get_reminders")
-	defer span.Send()
+	span := sentry.StartSpan(ctx, "get_reminders")
+	ctx = span.Context()
+	defer span.Finish()
 	if !query.SupportsAction(ctx, "get_reminders") {
 		return Error{Error: "You need to update the app on your watch to get reminders."}
 	}
@@ -153,8 +155,9 @@ func getReminders(ctx context.Context, quotaTracker *quota.Tracker, args any, re
 }
 
 func deleteReminder(ctx context.Context, quotaTracker *quota.Tracker, args any, requestChan chan<- map[string]any, responseChan <-chan map[string]any) any {
-	ctx, span := beeline.StartSpan(ctx, "delete_reminder")
-	defer span.Send()
+	span := sentry.StartSpan(ctx, "delete_reminder")
+	ctx = span.Context()
+	defer span.Finish()
 	if !query.SupportsAction(ctx, "delete_reminder") {
 		return Error{Error: "You need to update the app on your watch to delete reminders."}
 	}

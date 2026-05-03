@@ -17,7 +17,7 @@ package functions
 import (
 	"context"
 	"fmt"
-	"github.com/honeycombio/beeline-go"
+	"github.com/getsentry/sentry-go"
 	"github.com/openai/openai-go/v3"
 	"github.com/openai/openai-go/v3/shared"
 	"github.com/pebble-dev/bobby-assistant/service/assistant/query"
@@ -67,8 +67,9 @@ func getLocationThought(args any) string {
 }
 
 func getLocationImpl(ctx context.Context, quotaTracker *quota.Tracker, args any) any {
-	ctx, span := beeline.StartSpan(ctx, "get_location")
-	defer span.Send()
+	span := sentry.StartSpan(ctx, "get_location")
+	ctx = span.Context()
+	defer span.Finish()
 	arg := args.(*GetLocationInput)
 	location, err := mapbox.GeocodeWithContext(ctx, arg.PlaceName)
 	if err != nil {

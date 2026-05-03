@@ -1,20 +1,17 @@
 module github.com/pebble-dev/bobby-assistant/service
 
-go 1.23.0
-
-toolchain go1.23.3
+go 1.25.0
 
 require (
 	cloud.google.com/go/maps v1.20.4
+	github.com/getsentry/sentry-go v0.46.1
 	github.com/google/uuid v1.6.0
-	github.com/honeycombio/beeline-go v1.19.0
 	github.com/joho/godotenv v1.5.1
 	github.com/openai/openai-go/v3 v3.33.0
 	github.com/redis/go-redis/v9 v9.7.3
 	github.com/umahmood/haversine v0.0.0-20151105152445-808ab04add26
 	github.com/yuin/gopher-lua v1.1.1
 	golang.org/x/exp v0.0.0-20250408133849-7e4ce0ab07d0
-	golang.org/x/text v0.24.0
 	google.golang.org/api v0.230.0
 	google.golang.org/genproto v0.0.0-20250303144028-a0af3efb3deb
 	google.golang.org/grpc v1.72.0
@@ -29,23 +26,17 @@ require (
 	cloud.google.com/go/compute/metadata v0.6.0 // indirect
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
 	github.com/dgryski/go-rendezvous v0.0.0-20200823014737-9f7001d12a5f // indirect
-	github.com/facebookgo/clock v0.0.0-20150410010913-600d898af40a // indirect
-	github.com/facebookgo/limitgroup v0.0.0-20150612190941-6abd8d71ec01 // indirect
-	github.com/facebookgo/muster v0.0.0-20150708232844-fd3d7953fd52 // indirect
 	github.com/felixge/httpsnoop v1.0.4 // indirect
 	github.com/go-logr/logr v1.4.2 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect
 	github.com/google/s2a-go v0.1.9 // indirect
 	github.com/googleapis/enterprise-certificate-proxy v0.3.6 // indirect
 	github.com/googleapis/gax-go/v2 v2.14.1 // indirect
-	github.com/honeycombio/libhoney-go v1.25.0 // indirect
-	github.com/klauspost/compress v1.18.0 // indirect
+	github.com/sergi/go-diff v1.2.0 // indirect
 	github.com/tidwall/gjson v1.18.0 // indirect
 	github.com/tidwall/match v1.1.1 // indirect
 	github.com/tidwall/pretty v1.2.1 // indirect
 	github.com/tidwall/sjson v1.2.5 // indirect
-	github.com/vmihailenco/msgpack/v5 v5.4.1 // indirect
-	github.com/vmihailenco/tagparser/v2 v2.0.0 // indirect
 	go.opencensus.io v0.24.0 // indirect
 	go.opentelemetry.io/auto/sdk v1.1.0 // indirect
 	go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc v0.60.0 // indirect
@@ -58,10 +49,10 @@ require (
 	golang.org/x/oauth2 v0.29.0 // indirect
 	golang.org/x/sync v0.13.0 // indirect
 	golang.org/x/sys v0.32.0 // indirect
+	golang.org/x/text v0.24.0 // indirect
 	golang.org/x/time v0.11.0 // indirect
 	google.golang.org/genproto/googleapis/api v0.0.0-20250425173222-7b384671a197 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20250425173222-7b384671a197 // indirect
-	gopkg.in/alexcesaro/statsd.v2 v2.0.0 // indirect
 )
 
 // In v1.8.11, nhooyr.io/websocket made a change that appears to break cleanly closing websockets, so we can't use it.

@@ -1,41 +1,34 @@
-// Copyright 2025 Google LLC
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//      http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
-
 package main
 
 import (
-	"github.com/honeycombio/beeline-go"
-	"github.com/honeycombio/beeline-go/wrappers/hnynethttp"
+	"log"
+	"net/http"
+	"time"
+
+	"github.com/getsentry/sentry-go"
+	sentryhttp "github.com/getsentry/sentry-go/http"
 	"github.com/pebble-dev/bobby-assistant/service/assistant"
 	"github.com/pebble-dev/bobby-assistant/service/assistant/config"
 	"github.com/pebble-dev/bobby-assistant/service/assistant/util/redact"
 	"github.com/pebble-dev/bobby-assistant/service/assistant/util/storage"
-	"log"
-	"net/http"
 )
 
 func main() {
-	beeline.Init(beeline.Config{
-		WriteKey:    config.GetConfig().HoneycombKey,
-		Dataset:     "rws",
-		ServiceName: "bobby",
-		PresendHook: redact.CleanHoneycomb,
+	err := sentry.Init(sentry.ClientOptions{
+		Dsn:              config.GetConfig().SentryDSN,
+		EnableTracing:    true,
+		TracesSampleRate: 1.0,
+		BeforeSend:       redact.BeforeSend,
 	})
-	defer beeline.Close()
-	http.DefaultTransport = hnynethttp.WrapRoundTripper(http.DefaultTransport)
+	if err != nil {
+		log.Fatalf("sentry.Init: %s", err)
+	}
+	defer sentry.Flush(2 * time.Second)
+
+	sentryHandler := sentryhttp.New(sentryhttp.Options{})
+
 	service := assistant.NewService(storage.GetRedis())
 	addr := "0.0.0.0:8080"
 	log.Printf("Listening on %s.", addr)
-	log.Fatal(service.ListenAndServe(addr))
+	log.Fatal(http.ListenAndServe(addr, sentryHandler.Handle(service)))
 }

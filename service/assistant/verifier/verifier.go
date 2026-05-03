@@ -9,7 +9,7 @@ import (
 	"log"
 	"time"
 
-	"github.com/honeycombio/beeline-go"
+	"github.com/getsentry/sentry-go"
 	"github.com/pebble-dev/bobby-assistant/service/assistant/llm"
 
 	"github.com/pebble-dev/bobby-assistant/service/assistant/config"
@@ -52,8 +52,9 @@ type ActionCheck struct {
 }
 
 func DetermineActions(ctx context.Context, qt *quota.Tracker, message string) ([]ActionCheck, error) {
-	ctx, span := beeline.StartSpan(ctx, "determine_actions")
-	defer span.Send()
+	span := sentry.StartSpan(ctx, "determine_actions")
+	ctx = span.Context()
+	defer span.Finish()
 
 	cfg := config.GetConfig()
 	opts := []option.RequestOption{

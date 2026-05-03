@@ -17,7 +17,7 @@ package functions
 import (
 	"context"
 	"fmt"
-	"github.com/honeycombio/beeline-go"
+	"github.com/getsentry/sentry-go"
 	"github.com/openai/openai-go/v3"
 	"github.com/openai/openai-go/v3/shared"
 	"github.com/pebble-dev/bobby-assistant/service/assistant/quota"
@@ -68,8 +68,9 @@ func luaThought(args any) string {
 }
 
 func luaImplementation(ctx context.Context, quotaTracker *quota.Tracker, args any) any {
-	ctx, span := beeline.StartSpan(ctx, "run_lua")
-	defer span.Send()
+	span := sentry.StartSpan(ctx, "run_lua")
+	ctx = span.Context()
+	defer span.Finish()
 	arg := args.(*LuaInput)
 	result, err := runLua(ctx, arg.Timezone, arg.Script)
 	if err != nil || result == nil {
@@ -80,11 +81,9 @@ func luaImplementation(ctx context.Context, quotaTracker *quota.Tracker, args an
 			arg.Script = strings.Join(lines, "\n")
 			result, err = runLua(ctx, arg.Timezone, arg.Script)
 			if err != nil {
-				span.AddField("error", err)
 				return Error{"Script execution failed: " + err.Error()}
 			}
 		} else {
-			span.AddField("error", err)
 			return Error{"Script execution failed: " + err.Error()}
 		}
 	}

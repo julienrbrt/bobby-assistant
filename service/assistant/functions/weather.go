@@ -17,7 +17,7 @@ package functions
 import (
 	"context"
 	"fmt"
-	"github.com/honeycombio/beeline-go"
+	"github.com/getsentry/sentry-go"
 	"github.com/openai/openai-go/v3"
 	"github.com/openai/openai-go/v3/shared"
 	"github.com/pebble-dev/bobby-assistant/service/assistant/query"
@@ -87,8 +87,9 @@ func weatherThought(i any) string {
 }
 
 func getWeather(ctx context.Context, quotaTracker *quota.Tracker, args any) any {
-	ctx, span := beeline.StartSpan(ctx, "get_weather")
-	defer span.Send()
+	span := sentry.StartSpan(ctx, "get_weather")
+	ctx = span.Context()
+	defer span.Finish()
 	arg := args.(*WeatherInput)
 	var lat, lon float64
 	location := query.LocationFromContext(ctx)
@@ -98,14 +99,12 @@ func getWeather(ctx context.Context, quotaTracker *quota.Tracker, args any) any 
 	if arg.Location != "" {
 		coords, err := mapbox.GeocodeWithContext(ctx, arg.Location)
 		if err != nil {
-			span.AddField("error", err)
 			return Error{"Error finding location: " + err.Error()}
 		}
 		lat = coords.Lat
 		lon = coords.Lon
 	} else {
 		if location == nil {
-			span.AddField("error", "no location provided")
 			return Error{"Could not find your location"}
 		}
 		lat, lon = location.Lat, location.Lon
@@ -126,7 +125,6 @@ func getWeather(ctx context.Context, quotaTracker *quota.Tracker, args any) any 
 func processDailyForecast(ctx context.Context, lat, lon float64, units string) any {
 	forecast, err := weather.GetDailyForecast(ctx, lat, lon, units)
 	if err != nil {
-		beeline.AddField(ctx, "error", err)
 		return Error{"Could not get forecast: " + err.Error()}
 	}
 	response := map[string]any{}
@@ -172,7 +170,6 @@ func processDailyForecast(ctx context.Context, lat, lon float64, units string) a
 func processHourlyForecast(ctx context.Context, lat, lon float64, units string) any {
 	hourly, err := weather.GetHourlyForecast(ctx, lat, lon, units)
 	if err != nil {
-		beeline.AddField(ctx, "error", err)
 		return Error{"Could not get forecast: " + err.Error()}
 	}
 	var response []map[string]any
@@ -207,7 +204,6 @@ func processHourlyForecast(ctx context.Context, lat, lon float64, units string) 
 func processCurrentWeather(ctx context.Context, lat, lon float64, units string) any {
 	observations, err := weather.GetCurrentConditions(ctx, lat, lon, units)
 	if err != nil {
-		beeline.AddField(ctx, "error", err)
 		return Error{"Could not get current conditions: " + err.Error()}
 	}
 	return *observations

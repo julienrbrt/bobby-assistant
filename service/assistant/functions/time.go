@@ -20,7 +20,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/honeycombio/beeline-go"
+	"github.com/getsentry/sentry-go"
 	"github.com/openai/openai-go/v3"
 	"github.com/openai/openai-go/v3/shared"
 	"github.com/pebble-dev/bobby-assistant/service/assistant/quota"
@@ -75,8 +75,8 @@ func getTimeThought(args any) string {
 }
 
 func getTimeElsewhere(ctx context.Context, quotaTracker *quota.Tracker, args any) any {
-	ctx, span := beeline.StartSpan(ctx, "get_time_elsewhere")
-	defer span.Send()
+	span := sentry.StartSpan(ctx, "get_time_elsewhere")
+	defer span.Finish()
 	arg := args.(*GetTimeInput)
 	utc := time.Now().UTC().Add(time.Duration(arg.Offset) * time.Second)
 	loc, err := time.LoadLocation(arg.Timezone)

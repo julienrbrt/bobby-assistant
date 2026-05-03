@@ -17,8 +17,8 @@ package persistence
 import (
 	"context"
 	"encoding/json"
+	"github.com/getsentry/sentry-go"
 	"github.com/google/uuid"
-	"github.com/honeycombio/beeline-go"
 	"github.com/pebble-dev/bobby-assistant/service/assistant/llm"
 	"github.com/pebble-dev/bobby-assistant/service/assistant/util"
 	"github.com/redis/go-redis/v9"
@@ -49,8 +49,9 @@ func NewContext() *ThreadContext {
 }
 
 func LoadThread(ctx context.Context, r *redis.Client, id string) (*ThreadContext, error) {
-	ctx, span := beeline.StartSpan(ctx, "load_thread")
-	defer span.Send()
+	span := sentry.StartSpan(ctx, "load_thread")
+	ctx = span.Context()
+	defer span.Finish()
 	j, err := r.Get(ctx, "thread:"+id).Result()
 	if err != nil {
 		return nil, err
@@ -63,11 +64,11 @@ func LoadThread(ctx context.Context, r *redis.Client, id string) (*ThreadContext
 }
 
 func StoreThread(ctx context.Context, r *redis.Client, thread *ThreadContext) error {
-	ctx, span := beeline.StartSpan(ctx, "store_thread")
-	defer span.Send()
+	span := sentry.StartSpan(ctx, "store_thread")
+	ctx = span.Context()
+	defer span.Finish()
 	j, err := json.Marshal(thread)
 	if err != nil {
-		span.AddField("error", err)
 		return err
 	}
 	r.Set(ctx, "thread:"+thread.ThreadId.String(), j, 10*time.Minute)

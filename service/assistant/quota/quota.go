@@ -17,7 +17,7 @@ package quota
 import (
 	"context"
 	"fmt"
-	"github.com/honeycombio/beeline-go"
+	"github.com/getsentry/sentry-go"
 	"log"
 	"time"
 
@@ -50,7 +50,7 @@ func NewTracker(redisClient *redis.Client, userId int) *Tracker {
 }
 
 func (q *Tracker) ChargeInputQuota(ctx context.Context, tokenCount int, cachedTokenCount int) (credits int, err error) {
-	credits = (tokenCount - cachedTokenCount) * InputTokenCredits + cachedTokenCount * CachedInputTokenCredits
+	credits = (tokenCount-cachedTokenCount)*InputTokenCredits + cachedTokenCount*CachedInputTokenCredits
 	total, err := q.chargeCredits(ctx, q.userId, credits)
 	return total, err
 }
@@ -61,8 +61,9 @@ func (q *Tracker) ChargeOutputQuota(ctx context.Context, tokenCount int) (credit
 }
 
 func (q *Tracker) GetQuota(ctx context.Context) (used, remaining int, err error) {
-	ctx, span := beeline.StartSpan(ctx, "get_quota")
-	defer span.Send()
+	span := sentry.StartSpan(ctx, "get_quota")
+	ctx = span.Context()
+	defer span.Finish()
 	result := q.redis.Get(ctx, keyForUserQuota(q.userId))
 	if result.Err() == redis.Nil {
 		return 0, MonthlyQuotaCredits, nil
@@ -83,22 +84,20 @@ func keyForUserQuota(user int) string {
 }
 
 func (q *Tracker) chargeCredits(ctx context.Context, user, credits int) (int, error) {
-	ctx, span := beeline.StartSpan(ctx, "charge_credits")
-	defer span.Send()
+	span := sentry.StartSpan(ctx, "charge_credits")
+	ctx = span.Context()
+	defer span.Finish()
 	result := q.redis.IncrBy(ctx, keyForUserQuota(user), int64(credits))
 	if result.Err() != nil {
-		span.AddField("error", result.Err())
 		return 0, result.Err()
 	}
 	i, err := result.Uint64()
 	if err != nil {
-		span.AddField("error", result.Err())
 		return 0, err
 	}
 	if int(i) == credits {
 		_, err = q.redis.Expire(ctx, keyForUserQuota(user), 45*24*time.Hour).Result()
 		if err != nil {
-			span.AddField("error", result.Err())
 			return 0, err
 		}
 	}
@@ -112,8 +111,9 @@ func (q *Tracker) ChargeCredits(ctx context.Context, credits int) error {
 }
 
 func (q *Tracker) ChargeUserOrGlobalQuota(ctx context.Context, quotaType string, globalMax int, userCredits int) error {
-	ctx, span := beeline.StartSpan(ctx, "charge_user_or_global_quota")
-	defer span.Send()
+	span := sentry.StartSpan(ctx, "charge_user_or_global_quota")
+	ctx = span.Context()
+	defer span.Finish()
 	// Try charging the global quota first
 	charged, err := q.ChargeGlobalQuota(ctx, quotaType, globalMax)
 	if err != nil {
@@ -126,7 +126,6 @@ func (q *Tracker) ChargeUserOrGlobalQuota(ctx context.Context, quotaType string,
 	// Charge the user for the function call.
 	err = q.ChargeCredits(ctx, userCredits)
 	if err != nil {
-		span.AddField("error", err)
 		return err
 	}
 	return nil
@@ -135,21 +134,20 @@ func (q *Tracker) ChargeUserOrGlobalQuota(ctx context.Context, quotaType string,
 // MaybeChargeGlobalQuota charges a single point against a global monthly quota and returns true, if the quota is below
 // max; otherwise still charges it but returns false.
 func (q *Tracker) ChargeGlobalQuota(ctx context.Context, quotaType string, max int) (bool, error) {
-	ctx, span := beeline.StartSpan(ctx, "maybe_charge_global_quota")
-	defer span.Send()
+	span := sentry.StartSpan(ctx, "maybe_charge_global_quota")
+	ctx = span.Context()
+	defer span.Finish()
 	// The quota key is per month, so we use the current month and year as a prefix.
 	now := time.Now()
 	quotaKey := fmt.Sprintf("global_quota:%02d%02d:%s", now.Year()%100, now.Month(), quotaType)
 	result := q.redis.Incr(ctx, quotaKey)
 	if result.Err() != nil {
-		span.AddField("error", result.Err())
 		return false, result.Err()
 	}
 	// If the quota is 1 (i.e. we are the first to set it), set the expiration to 45 days so it eventually cleans up.
 	if result.Val() == 1 {
 		_, err := q.redis.Expire(ctx, quotaKey, 45*24*time.Hour).Result()
 		if err != nil {
-			span.AddField("error", result.Err())
 			return false, err
 		}
 	}

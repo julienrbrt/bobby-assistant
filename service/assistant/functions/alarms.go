@@ -2,7 +2,7 @@ package functions
 
 import (
 	"context"
-	"github.com/honeycombio/beeline-go"
+	"github.com/getsentry/sentry-go"
 	"github.com/openai/openai-go/v3"
 	"github.com/openai/openai-go/v3/shared"
 	"github.com/pebble-dev/bobby-assistant/service/assistant/quota"
@@ -190,8 +190,9 @@ func init() {
 }
 
 func alarmImpl(ctx context.Context, quotaTracker *quota.Tracker, args any, requests chan<- map[string]any, responses <-chan map[string]any) any {
-	ctx, span := beeline.StartSpan(ctx, "set_alarm")
-	defer span.Send()
+	span := sentry.StartSpan(ctx, "set_alarm")
+	ctx = span.Context()
+	defer span.Finish()
 	if !query.SupportsAction(ctx, "set_alarm") {
 		return Error{Error: "You need to update the app on your watch to set alarms."}
 	}
@@ -210,8 +211,9 @@ func alarmImpl(ctx context.Context, quotaTracker *quota.Tracker, args any, reque
 }
 
 func timerImpl(ctx context.Context, quotaTracker *quota.Tracker, args any, requests chan<- map[string]any, responses <-chan map[string]any) any {
-	ctx, span := beeline.StartSpan(ctx, "set_timer")
-	defer span.Send()
+	span := sentry.StartSpan(ctx, "set_timer")
+	ctx = span.Context()
+	defer span.Finish()
 	if !query.SupportsAction(ctx, "set_alarm") {
 		return Error{Error: "You need to update the app on your watch to set timers."}
 	}
@@ -252,8 +254,9 @@ func timerThought(i any) string {
 }
 
 func deleteAlarmImpl(ctx context.Context, quotaTracker *quota.Tracker, args any, requests chan<- map[string]any, responses <-chan map[string]any) any {
-	ctx, span := beeline.StartSpan(ctx, "delete_alarm")
-	defer span.Send()
+	span := sentry.StartSpan(ctx, "delete_alarm")
+	ctx = span.Context()
+	defer span.Finish()
 	if !query.SupportsAction(ctx, "set_alarm") {
 		return Error{Error: "You need to update the app on your watch to delete alarms."}
 	}
@@ -271,8 +274,9 @@ func deleteAlarmImpl(ctx context.Context, quotaTracker *quota.Tracker, args any,
 }
 
 func deleteTimerImpl(ctx context.Context, quotaTracker *quota.Tracker, args any, requests chan<- map[string]any, responses <-chan map[string]any) any {
-	ctx, span := beeline.StartSpan(ctx, "delete_timer")
-	defer span.Send()
+	span := sentry.StartSpan(ctx, "delete_timer")
+	ctx = span.Context()
+	defer span.Finish()
 	if !query.SupportsAction(ctx, "set_alarm") {
 		return Error{Error: "You need to update the app on your watch to delete timers."}
 	}
@@ -298,8 +302,9 @@ func deleteTimerThought(i any) string {
 }
 
 func getAlarmImpl(ctx context.Context, quotaTracker *quota.Tracker, args any, requests chan<- map[string]any, responses <-chan map[string]any) any {
-	ctx, span := beeline.StartSpan(ctx, "get_alarm")
-	defer span.Send()
+	span := sentry.StartSpan(ctx, "get_alarm")
+	ctx = span.Context()
+	defer span.Finish()
 	if !query.SupportsAction(ctx, "get_alarm") {
 		return Error{Error: "You need to update the app on your watch to get alarms."}
 	}
@@ -315,8 +320,9 @@ func getAlarmImpl(ctx context.Context, quotaTracker *quota.Tracker, args any, re
 }
 
 func getTimerImpl(ctx context.Context, quotaTracker *quota.Tracker, args any, requests chan<- map[string]any, responses <-chan map[string]any) any {
-	ctx, span := beeline.StartSpan(ctx, "get_timer")
-	defer span.Send()
+	span := sentry.StartSpan(ctx, "get_timer")
+	ctx = span.Context()
+	defer span.Finish()
 	if !query.SupportsAction(ctx, "get_alarm") {
 		return Error{Error: "You need to update the app on your watch to get timers."}
 	}

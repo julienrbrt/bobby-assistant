@@ -16,7 +16,7 @@ package assistant
 
 import (
 	"context"
-	"github.com/honeycombio/beeline-go"
+	"github.com/getsentry/sentry-go"
 	"github.com/pebble-dev/bobby-assistant/service/assistant/util/mapbox"
 	"log"
 	"strconv"
@@ -111,15 +111,15 @@ func generateWidgetSentence(ctx context.Context) string {
 }
 
 func (ps *PromptSession) generateSystemPrompt(ctx context.Context) string {
-	ctx, span := beeline.StartSpan(ctx, "generate_system_prompt")
-	defer span.Send()
+	span := sentry.StartSpan(ctx, "generate_system_prompt")
+	ctx = span.Context()
+	defer span.Finish()
 	locationString := ""
 	location := query.LocationFromContext(ctx)
 	if location != nil {
 		if place, err := ps.getPlaceFromLocation(ctx); err == nil {
 			locationString = "The user is in " + place + ". "
 		} else {
-			span.AddField("error", err)
 			log.Printf("Failed to get user location: %v", err)
 		}
 	} else {

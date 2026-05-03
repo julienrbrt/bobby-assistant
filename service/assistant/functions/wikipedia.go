@@ -25,7 +25,7 @@ import (
 	"net/url"
 	"strings"
 
-	"github.com/honeycombio/beeline-go"
+	"github.com/getsentry/sentry-go"
 	"github.com/openai/openai-go/v3"
 	"github.com/openai/openai-go/v3/shared"
 	"github.com/pebble-dev/bobby-assistant/service/assistant/quota"
@@ -101,9 +101,9 @@ func queryWiki(ctx context.Context, quotaTracker *quota.Tracker, args any) any {
 }
 
 func queryWikiInternal(ctx context.Context, wiki, query string, completeArticle, allowSearch bool) (string, error) {
-	ctx, span := beeline.StartSpan(ctx, "query_wiki")
-	defer span.Send()
-	span.AddField("title", query)
+	span := sentry.StartSpan(ctx, "query_wiki")
+	ctx = span.Context()
+	defer span.Finish()
 	log.Printf("Looking up %s article: %q (complete: %t)\n", wiki, query, completeArticle)
 	qs := url.QueryEscape(query)
 	u := urlMap[wiki] + "w/api.php?action=query&prop=revisions&rvprop=content&format=xml&titles=" + qs + "&rvslots=main"
@@ -153,9 +153,9 @@ func queryWikiInternal(ctx context.Context, wiki, query string, completeArticle,
 }
 
 func searchWiki(ctx context.Context, wiki, query string) ([]string, error) {
-	ctx, span := beeline.StartSpan(ctx, "search_wikipedia")
-	defer span.Send()
-	span.AddField("query", query)
+	span := sentry.StartSpan(ctx, "search_wikipedia")
+	ctx = span.Context()
+	defer span.Finish()
 	log.Printf("Searching %s for %q\n", wiki, query)
 	request, err := http.NewRequestWithContext(ctx, "GET", urlMap[wiki]+"w/api.php?action=opensearch&limit=5&namespace=0&format=json&redirects=resolve&search="+url.QueryEscape(query), nil)
 	if err != nil {

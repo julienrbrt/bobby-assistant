@@ -24,7 +24,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/honeycombio/beeline-go"
+	"github.com/getsentry/sentry-go"
 	"github.com/redis/go-redis/v9"
 
 	"github.com/pebble-dev/bobby-assistant/service/assistant/config"
@@ -60,8 +60,9 @@ var ErrUnknownCurrency = errors.New("unknown currency code")
 var ErrQuotaExceeded = errors.New("quota exceeded")
 
 func (dm *DataManager) GetExchangeData(ctx context.Context, from string) (*CurrencyExchangeData, error) {
-	ctx, span := beeline.StartSpan(ctx, "get_exchange_data")
-	defer span.Send()
+	span := sentry.StartSpan(ctx, "get_exchange_data")
+	ctx = span.Context()
+	defer span.Finish()
 	if !IsValidCurrency(from) {
 		return nil, fmt.Errorf("unknown currency code %q", from)
 	}
@@ -85,8 +86,9 @@ func (dm *DataManager) GetExchangeData(ctx context.Context, from string) (*Curre
 }
 
 func (dm *DataManager) fetchExchangeRateData(ctx context.Context, from string) (*CurrencyExchangeData, error) {
-	ctx, span := beeline.StartSpan(ctx, "fetch_exchange_rate_data")
-	defer span.Send()
+	span := sentry.StartSpan(ctx, "fetch_exchange_rate_data")
+	ctx = span.Context()
+	defer span.Finish()
 	escaped := url.QueryEscape(from)
 	request, err := http.NewRequest("GET", "https://v6.exchangerate-api.com/v6/"+config.GetConfig().ExchangeRateApiKey+"/latest/"+escaped, nil)
 	if err != nil {
@@ -118,8 +120,9 @@ func (dm *DataManager) fetchExchangeRateData(ctx context.Context, from string) (
 }
 
 func (dm *DataManager) cacheData(ctx context.Context, currency string, data *CurrencyExchangeData) error {
-	ctx, span := beeline.StartSpan(ctx, "cache_data")
-	defer span.Send()
+	span := sentry.StartSpan(ctx, "cache_data")
+	ctx = span.Context()
+	defer span.Finish()
 	encoded, err := json.Marshal(data)
 	if err != nil {
 		return err
@@ -132,8 +135,9 @@ func (dm *DataManager) cacheData(ctx context.Context, currency string, data *Cur
 }
 
 func (dm *DataManager) loadCachedData(ctx context.Context, currency string) (*CurrencyExchangeData, error) {
-	ctx, span := beeline.StartSpan(ctx, "load_cached_data")
-	defer span.Send()
+	span := sentry.StartSpan(ctx, "load_cached_data")
+	ctx = span.Context()
+	defer span.Finish()
 	data, err := dm.redisClient.Get(ctx, keyFromCurrency(currency)).Result()
 	if err != nil {
 		if errors.Is(err, redis.Nil) {

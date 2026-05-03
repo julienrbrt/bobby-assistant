@@ -20,7 +20,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/honeycombio/beeline-go"
+	"github.com/getsentry/sentry-go"
 	"github.com/openai/openai-go/v3"
 	"github.com/openai/openai-go/v3/shared"
 	"github.com/pebble-dev/bobby-assistant/service/assistant/query"
@@ -105,13 +105,13 @@ func findRouteThought(args any) string {
 }
 
 func resolveLocation(ctx context.Context, location string) (*routingpb.Waypoint, error) {
-	ctx, span := beeline.StartSpan(ctx, "resolve_location")
-	defer span.Send()
+	span := sentry.StartSpan(ctx, "resolve_location")
+	ctx = span.Context()
+	defer span.Finish()
 	// The routing API only accepts things that actually look like addresses, so we do a text search to resolve to a
 	// place ID first. Conveniently, Google doesn't actually charge for this, as long as we only ask for place IDs.
 	placeService, err := places.NewService(ctx)
 	if err != nil {
-		span.AddField("error", err)
 		return nil, err
 	}
 	userLocation := query.LocationFromContext(ctx)
@@ -134,11 +134,9 @@ func resolveLocation(ctx context.Context, location string) (*routingpb.Waypoint,
 		PageSize:     1,
 	}).Fields("places.id").Do()
 	if err != nil {
-		span.AddField("error", err)
 		return nil, err
 	}
 	if len(results.Places) == 0 {
-		span.AddField("error", "no results found")
 		return nil, fmt.Errorf("no results found for %q", location)
 	}
 	return &routingpb.Waypoint{
@@ -149,21 +147,19 @@ func resolveLocation(ctx context.Context, location string) (*routingpb.Waypoint,
 }
 
 func placeIdToName(ctx context.Context, qt *quota.Tracker, placeId string) (displayName, placeType, address string, err error) {
-	ctx, span := beeline.StartSpan(ctx, "place_id_to_name")
-	defer span.Send()
+	span := sentry.StartSpan(ctx, "place_id_to_name")
+	ctx = span.Context()
+	defer span.Finish()
 	placeService, err := places.NewService(ctx)
 	if err != nil {
-		span.AddField("error", err)
 		return "", "", "", err
 	}
 	// somehow, knowing the name of a place is "pro", not "essential"
 	if err := qt.ChargeUserOrGlobalQuota(ctx, "gplaces_details_pro", 5000, quota.GPlacesLookupProCredits); err != nil {
-		span.AddField("error", err)
 		return "", "", "", err
 	}
 	result, err := placeService.Places.Get("places/" + placeId).Fields("displayName,primaryTypeDisplayName,shortFormattedAddress").Do()
 	if err != nil {
-		span.AddField("error", err)
 		return "", "", "", err
 	}
 	if result.DisplayName != nil {
@@ -224,8 +220,9 @@ func nullableTimestrampFromString(timeStr string) (*timestamppb.Timestamp, error
 }
 
 func findRoute(ctx context.Context, quotaTracker *quota.Tracker, args any) any {
-	ctx, span := beeline.StartSpan(ctx, "find_route")
-	defer span.Send()
+	span := sentry.StartSpan(ctx, "find_route")
+	ctx = span.Context()
+	defer span.Finish()
 	arg := args.(*RoutingQuery)
 
 	origin, err := waypointFromString(ctx, arg.Origin)
@@ -256,7 +253,6 @@ func findRoute(ctx context.Context, quotaTracker *quota.Tracker, args any) any {
 
 	err = quotaTracker.ChargeUserOrGlobalQuota(ctx, "gmaps_route", 5000, quota.RouteCalculationCredits)
 	if err != nil {
-		span.AddField("error", err)
 		return Error{Error: "Error charging quota: " + err.Error()}
 	}
 
