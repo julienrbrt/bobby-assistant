@@ -1,37 +1,44 @@
-# Tiny Assistant
+# Bobby Assistant
 
-Tiny Assistant is an LLM-based assistant that runs on your Pebble smartwatch,
-if you still have a smartwatch that ceased production in 2016 lying around.
+Bobby Assistant is an LLM-based assistant that runs on your Pebble smartwatch.
 
-![A screenshot from a Pebble smartwatch running the Tiny Assistant. The user asked for the time, the assistant responded that it was 3:59 PM.](./docs/screenshot.png)
+This is a fork of [Bobby Assistant](https://github.com/pebble-dev/bobby-assistant) with the following changes:
+
+- **Self-hosted, no external dependencies.** Removed all reliance on Rebble.io services (user authentication, quota tracking, timeline API, feedback reporting). Users bring their own LLM API key and configure it directly on the watch.
+- **OpenAI-compatible API.** Replaced the Google Gemini client with the OpenAI Go SDK, supporting any OpenAI-compatible endpoint (OpenAI, Ollama, LiteLLM, etc.).
+- **SQLite instead of Redis.** Thread persistence and currency rate caching use a local SQLite database. No external services required.
+- **Per-user LLM configuration.** API key, base URL, and model are configured in the watch app's settings and sent with each request. No server-side secrets needed for LLM access.
+- **No quota system.** Removed credit-based usage tracking and per-user quotas.
+- **Sentry integration.** Replaced Honeycomb tracing with Sentry for error reporting and performance monitoring.
+- **Local reminders.** Reminders are stored on-device. Timeline pin notifications are no longer supported since that required Rebble authentication.
+
+![A screenshot from a Pebble smartwatch running the assistant. The user asked for the time, the assistant responded that it was 3:59 PM.](./docs/screenshot.png)
 
 ## Usage
 
 ### Server
 
-To use Tiny Assistant, you will need to run the server in `service/` somewhere
-your phone can reach.
+Run the server in `service/` somewhere your phone can reach.
 
-You will need to set a few environment variables:
+Environment variables:
 
-- `LLM_API_KEY` - an API key for your LLM provider
-- `LLM_MODEL` - the model to use (e.g. `gpt-4o`, `claude-sonnet-4-20250514`)
-- `LLM_BASE_URL` - (optional) the base URL of your OpenAI-compatible API endpoint.
-  Defaults to OpenAI's API. Set this when using a BYOK server or a different
-  provider that exposes an OpenAI-compatible API.
-- `REDIS_URL` - a URL for a functioning Redis server. No data is persisted
-  long-term, so a purely in-memory server is fine.
-- `USER_IDENTIFICATION_URL` - a URL pointing to an instance of
-  [user-identifier](https://github.com/pebble-dev/user-identifier).
-- `MAPBOX_KEY` - an API key for [Mapbox](https://www.mapbox.com), which is
-  used for geocoding. If no key is provided, geocoding will be unavailable.
+- `SENTRY_DSN` - (optional) Sentry DSN for error reporting
+- `DB_PATH` - (optional) path to the SQLite database file. Defaults to `bobby.db`
+- `MAPBOX_KEY` - (optional) API key for [Mapbox](https://www.mapbox.com), used for geocoding and POI search
+- `IBM_KEY` - (optional) API key for IBM weather data
+- `EXCHANGE_RATE_API_KEY` - (optional) API key for exchange rate lookups
+- `GOOGLE_MAPS_STATIC_KEY`, `GOOGLE_MAPS_STATIC_SECRET`, `GOOGLE_MAPS_STATIC_MAP_ID` - (optional) for static map images
 
 ### Client
 
-Update the URL in `app/src/pkjs/urls.js` to point at your instance of the
-server.
+Configure the following in the watch app's settings page:
 
-Then you can simply build it using the Pebble SDK and install on your watch.
+- **Server URL** - the WebSocket URL of your server (e.g. `wss://my-server.com/query`)
+- **API Key** - your OpenAI-compatible API key
+- **Base URL** - (optional) base URL if using a non-OpenAI provider
+- **Model** - the model to use (e.g. `gpt-4o-mini`)
+
+Build with the Pebble SDK and install on your watch.
 
 ## Contributing
 
