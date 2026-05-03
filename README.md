@@ -14,9 +14,9 @@ your phone can reach.
 
 You will need to set a few environment variables:
 
-- `API_KEY` - an API key for your LLM provider
-- `MODEL` - the model to use (e.g. `gpt-4o`, `claude-sonnet-4-20250514`)
-- `BASE_URL` - (optional) the base URL of your OpenAI-compatible API endpoint.
+- `LLM_API_KEY` - an API key for your LLM provider
+- `LLM_MODEL` - the model to use (e.g. `gpt-4o`, `claude-sonnet-4-20250514`)
+- `LLM_BASE_URL` - (optional) the base URL of your OpenAI-compatible API endpoint.
   Defaults to OpenAI's API. Set this when using a BYOK server or a different
   provider that exposes an OpenAI-compatible API.
 - `REDIS_URL` - a URL for a functioning Redis server. No data is persisted

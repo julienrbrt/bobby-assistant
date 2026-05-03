@@ -1,17 +1,3 @@
-// Copyright 2025 Google LLC
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//      http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
-
 package functions
 
 import (
@@ -20,7 +6,8 @@ import (
 	"log"
 
 	"github.com/honeycombio/beeline-go"
-	"github.com/pebble-dev/bobby-assistant/service/assistant/llm"
+	"github.com/openai/openai-go/v3"
+	"github.com/openai/openai-go/v3/shared"
 
 	"github.com/pebble-dev/bobby-assistant/service/assistant/quota"
 	"github.com/pebble-dev/bobby-assistant/service/assistant/util/currencies"
@@ -39,27 +26,27 @@ type CurrencyConversionResponse struct {
 
 func init() {
 	registerFunction(Registration{
-		Definition: llm.FunctionDecl{
+		Definition: shared.FunctionDefinitionParam{
 			Name:        "convert_currency",
-			Description: "Convert an amount of one (real, non-crypto) currency to another. *Always* call this function to get exchange rates when doing currency conversion - never use memorised rates.",
-			Parameters: &llm.Schema{
-				Type: "object",
-				Properties: map[string]*llm.Schema{
-					"amount": {
-						Type:        "number",
-						Format:      "double",
-						Description: "The amount of currency to convert.",
+			Description: openai.String("Convert an amount of one (real, non-crypto) currency to another. *Always* call this function to get exchange rates when doing currency conversion - never use memorised rates."),
+			Parameters: shared.FunctionParameters{
+				"type": "object",
+				"properties": map[string]any{
+					"amount": map[string]any{
+						"type":        "number",
+						"format":      "double",
+						"description": "The amount of currency to convert.",
 					},
-					"from": {
-						Type:        "string",
-						Description: "The currency code to convert from.",
+					"from": map[string]any{
+						"type":        "string",
+						"description": "The currency code to convert from.",
 					},
-					"to": {
-						Type:        "string",
-						Description: "The currency code to convert to.",
+					"to": map[string]any{
+						"type":        "string",
+						"description": "The currency code to convert to.",
 					},
 				},
-				Required: []string{"amount", "from", "to"},
+				"required": []string{"amount", "from", "to"},
 			},
 		},
 		Fn:        convertCurrency,

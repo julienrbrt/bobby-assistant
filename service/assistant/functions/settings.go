@@ -1,22 +1,9 @@
-// Copyright 2025 Google LLC
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//      http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
-
 package functions
 
 import (
 	"context"
-	"github.com/pebble-dev/bobby-assistant/service/assistant/llm"
+	"github.com/openai/openai-go/v3"
+	"github.com/openai/openai-go/v3/shared"
 	"github.com/pebble-dev/bobby-assistant/service/assistant/quota"
 	"strings"
 )
@@ -32,46 +19,46 @@ type UpdateSettingsInput struct {
 
 func init() {
 	registerFunction(Registration{
-		Definition: llm.FunctionDecl{
+		Definition: shared.FunctionDefinitionParam{
 			Name:        "update_settings",
-			Description: "Update the user's settings, e.g. their preferred unit system. Call if and only if the user asks you to change something. Properties not specified won't be changed. No property is required. For security reasons, changing the location permission can't be done with this method - the user must go to the settings page.",
-			Parameters: &llm.Schema{
-				Type: "object",
-				Properties: map[string]*llm.Schema{
-					"unit_system": {
-						Type:        "string",
-						Description: "Whether the user prefers metric, imperial, 'UK hybrid' (temperature in celsius, distance in miles), or both metric and imperial. Or, 'auto' to figure it out based on the user's location.",
-						Enum:        []string{"auto", "imperial", "metric", "uk hybrid", "both"},
+			Description: openai.String("Update the user's settings, e.g. their preferred unit system. Call if and only if the user asks you to change something. Properties not specified won't be changed. No property is required. For security reasons, changing the location permission can't be done with this method - the user must go to the settings page."),
+			Parameters: shared.FunctionParameters{
+				"type": "object",
+				"properties": map[string]any{
+					"unit_system": map[string]any{
+						"type":        "string",
+						"description": "Whether the user prefers metric, imperial, 'UK hybrid' (temperature in celsius, distance in miles), or both metric and imperial. Or, 'auto' to figure it out based on the user's location.",
+						"enum":        []string{"auto", "imperial", "metric", "uk hybrid", "both"},
 					},
-					"response_language": {
-						Type:        "string",
-						Description: "The user's preferred response language. This is the language in which the assistant will respond to the user, or 'automatic' to use the language of the user's last message.",
-						Enum: []string{"auto", "af_ZA", "id_ID", "ms_MY", "cs_CZ", "da_DK", "de_DE",
+					"response_language": map[string]any{
+						"type":        "string",
+						"description": "The user's preferred response language. This is the language in which the assistant will respond to the user, or 'automatic' to use the language of the user's last message.",
+						"enum": []string{"auto", "af_ZA", "id_ID", "ms_MY", "cs_CZ", "da_DK", "de_DE",
 							"en_US", "es_ES", "fil_PH", "fr_FR", "gl_ES", "hr_HR", "is_IS", "it_IT", "sw_TZ", "lv_LV",
 							"lt_LT", "hu_HU", "nl_NL", "no_NO", "pl_PL", "pt_PT", "ro_RO", "ru_RU", "sk_SK", "sl_SI",
 							"fi_FI", "sv_SE", "tr_TR", "zu_ZA"},
 					},
-					"alarm_vibration_pattern": {
-						Type:        "string",
-						Description: "The user's preferred alarm vibration pattern, used when alarms go off.",
-						Enum:        []string{"Reveille", "Mario", "Nudge Nudge", "Jackhammer", "Standard"},
+					"alarm_vibration_pattern": map[string]any{
+						"type":        "string",
+						"description": "The user's preferred alarm vibration pattern, used when alarms go off.",
+						"enum":        []string{"Reveille", "Mario", "Nudge Nudge", "Jackhammer", "Standard"},
 					},
-					"timer_vibration_pattern": {
-						Type:        "string",
-						Description: "The user's preferred timer vibration pattern, used when timers go off.",
-						Enum:        []string{"Reveille", "Mario", "Nudge Nudge", "Jackhammer", "Standard"},
+					"timer_vibration_pattern": map[string]any{
+						"type":        "string",
+						"description": "The user's preferred timer vibration pattern, used when timers go off.",
+						"enum":        []string{"Reveille", "Mario", "Nudge Nudge", "Jackhammer", "Standard"},
 					},
-					"quick_launch_behaviour": {
-						Type:        "string",
-						Description: "The user's preferred quick launch behaviour. The app can open the home screen (same as a non-quick launch), open the conversation but time out and quit after a minute, or open the conversation and stick around.",
-						Enum:        []string{"open home screen", "start conversation and time out", "start conversation and stay open"},
+					"quick_launch_behaviour": map[string]any{
+						"type":        "string",
+						"description": "The user's preferred quick launch behaviour. The app can open the home screen (same as a non-quick launch), open the conversation but time out and quit after a minute, or open the conversation and stick around.",
+						"enum":        []string{"open home screen", "start conversation and time out", "start conversation and stay open"},
 					},
-					"confirm_prompts": {
-						Type:        "boolean",
-						Description: "Whether the user wants to be asked to confirm their all of their queries before acting on them",
+					"confirm_prompts": map[string]any{
+						"type":        "boolean",
+						"description": "Whether the user wants to be asked to confirm their all of their queries before acting on them",
 					},
 				},
-				Required: []string{},
+				"required": []string{},
 			},
 		},
 		Cb:         updateSettingsImpl,

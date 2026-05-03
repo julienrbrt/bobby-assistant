@@ -1,17 +1,3 @@
-// Copyright 2025 Google LLC
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//      http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
-
 package functions
 
 import (
@@ -20,7 +6,8 @@ import (
 	"time"
 
 	"github.com/honeycombio/beeline-go"
-	"github.com/pebble-dev/bobby-assistant/service/assistant/llm"
+	"github.com/openai/openai-go/v3"
+	"github.com/openai/openai-go/v3/shared"
 	"github.com/pebble-dev/bobby-assistant/service/assistant/quota"
 
 	"github.com/pebble-dev/bobby-assistant/service/assistant/query"
@@ -46,27 +33,27 @@ type DeleteReminderInput struct {
 
 func init() {
 	registerFunction(Registration{
-		Definition: llm.FunctionDecl{
+		Definition: shared.FunctionDefinitionParam{
 			Name:        "set_reminder",
-			Description: "Set a reminder for the user to perform a task at a time.  Either time or delay must be provided, but not both. If the user specifies a time but not a day, assume they meant the next time that time will happen.",
-			Parameters: &llm.Schema{
-				Type: "object",
-				Properties: map[string]*llm.Schema{
-					"time": {
-						Type:        "string",
-						Description: "The time to schedule the reminder for in ISO 8601 format, e.g. '2023-07-12T00:00:00-07:00'. Always assume the user's timezone unless otherwise specified.",
+			Description: openai.String("Set a reminder for the user to perform a task at a time.  Either time or delay must be provided, but not both. If the user specifies a time but not a day, assume they meant the next time that time will happen."),
+			Parameters: shared.FunctionParameters{
+				"type": "object",
+				"properties": map[string]any{
+					"time": map[string]any{
+						"type":        "string",
+						"description": "The time to schedule the reminder for in ISO 8601 format, e.g. '2023-07-12T00:00:00-07:00'. Always assume the user's timezone unless otherwise specified.",
 					},
-					"delay_mins": {
-						Type:        "integer",
-						Description: "The delay from now to when the reminder should be scheduled, in minutes.",
-						Format:      "int32",
+					"delay_mins": map[string]any{
+						"type":        "integer",
+						"description": "The delay from now to when the reminder should be scheduled, in minutes.",
+						"format":      "int32",
 					},
-					"what": {
-						Type:        "string",
-						Description: "What to remind the user to do.",
+					"what": map[string]any{
+						"type":        "string",
+						"description": "What to remind the user to do.",
 					},
 				},
-				Required: []string{"what"},
+				"required": []string{"what"},
 			},
 		},
 		Cb:        setReminder,
@@ -75,9 +62,9 @@ func init() {
 	})
 
 	registerFunction(Registration{
-		Definition: llm.FunctionDecl{
+		Definition: shared.FunctionDefinitionParam{
 			Name:        "get_reminders",
-			Description: "Get a list of all active reminders.",
+			Description: openai.String("Get a list of all active reminders."),
 		},
 		Cb:        getReminders,
 		Thought:   getRemindersThought,
@@ -85,18 +72,18 @@ func init() {
 	})
 
 	registerFunction(Registration{
-		Definition: llm.FunctionDecl{
+		Definition: shared.FunctionDefinitionParam{
 			Name:        "delete_reminder",
-			Description: "Delete a specific reminder by its ID.",
-			Parameters: &llm.Schema{
-				Type: "object",
-				Properties: map[string]*llm.Schema{
-					"id": {
-						Type:        "string",
-						Description: "The ID of the reminder to delete. You *must* call get_reminders first to discover the ID of the correct reminder.",
+			Description: openai.String("Delete a specific reminder by its ID."),
+			Parameters: shared.FunctionParameters{
+				"type": "object",
+				"properties": map[string]any{
+					"id": map[string]any{
+						"type":        "string",
+						"description": "The ID of the reminder to delete. You *must* call get_reminders first to discover the ID of the correct reminder.",
 					},
 				},
-				Required: []string{"id"},
+				"required": []string{"id"},
 			},
 		},
 		Cb:        deleteReminder,

@@ -1,24 +1,11 @@
-// Copyright 2025 Google LLC
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//      http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
-
 package functions
 
 import (
 	"context"
 	"fmt"
 	"github.com/honeycombio/beeline-go"
-	"github.com/pebble-dev/bobby-assistant/service/assistant/llm"
+	"github.com/openai/openai-go/v3"
+	"github.com/openai/openai-go/v3/shared"
 	"github.com/pebble-dev/bobby-assistant/service/assistant/query"
 	"github.com/pebble-dev/bobby-assistant/service/assistant/quota"
 	"github.com/pebble-dev/bobby-assistant/service/assistant/util/mapbox"
@@ -37,28 +24,28 @@ type WeatherInput struct {
 
 func init() {
 	registerFunction(Registration{
-		Definition: llm.FunctionDecl{
+		Definition: shared.FunctionDefinitionParam{
 			Name:        "get_weather",
-			Description: "Given a location, return the current or future weather, and sunrise/sunset times. Do not specify a location if you want the user's local weather.",
-			Parameters: &llm.Schema{
-				Type: "object",
-				Properties: map[string]*llm.Schema{
-					"location": {
-						Type:        "string",
-						Description: "The city, state, and country, e.g. 'Redwood City, CA, USA'. Omit for the user's current location.",
+			Description: openai.String("Given a location, return the current or future weather, and sunrise/sunset times. Do not specify a location if you want the user's local weather."),
+			Parameters: shared.FunctionParameters{
+				"type": "object",
+				"properties": map[string]any{
+					"location": map[string]any{
+						"type":        "string",
+						"description": "The city, state, and country, e.g. 'Redwood City, CA, USA'. Omit for the user's current location.",
 					},
-					"unit": {
-						Type:        "string",
-						Description: "The user's unit preference",
-						Enum:        []string{"imperial", "metric", "uk hybrid"},
+					"unit": map[string]any{
+						"type":        "string",
+						"description": "The user's unit preference",
+						"enum":        []string{"imperial", "metric", "uk hybrid"},
 					},
-					"kind": {
-						Type:        "string",
-						Description: "The kind of weather to return: current weather, the next 7 days, or the next 24 hours.",
-						Enum:        []string{"current", "forecast daily", "forecast hourly"},
+					"kind": map[string]any{
+						"type":        "string",
+						"description": "The kind of weather to return: current weather, the next 7 days, or the next 24 hours.",
+						"enum":        []string{"current", "forecast daily", "forecast hourly"},
 					},
 				},
-				Required: []string{"unit", "kind"},
+				"required": []string{"unit", "kind"},
 			},
 		},
 		Fn:        getWeather,

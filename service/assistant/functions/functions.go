@@ -18,7 +18,8 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/pebble-dev/bobby-assistant/service/assistant/llm"
+	"github.com/openai/openai-go/v3"
+	"github.com/openai/openai-go/v3/shared"
 	"github.com/pebble-dev/bobby-assistant/service/assistant/quota"
 	"log"
 	"reflect"
@@ -37,7 +38,7 @@ const MaxResponseSize = 20000
 
 type Registration struct {
 	// The function definition. The Parameters field will be filled out automatically and can be omitted.
-	Definition llm.FunctionDecl
+	Definition shared.FunctionDefinitionParam
 	// Aliases for the function, in case the model gets the name of the function wrong.
 	Aliases []string
 	// The function to call, for a simple function
@@ -214,26 +215,30 @@ func SummariseFunction(fn, args string) string {
 	}
 }
 
-func GetFunctionDefinitionsByCapability() map[string][]llm.FunctionDecl {
-	definitions := map[string][]llm.FunctionDecl{}
+func GetFunctionDefinitionsByCapability() map[string][]shared.FunctionDefinitionParam {
+	definitions := map[string][]shared.FunctionDefinitionParam{}
 	for _, reg := range functionMap {
 		if _, ok := definitions[reg.Capability]; !ok {
-			definitions[reg.Capability] = []llm.FunctionDecl{}
+			definitions[reg.Capability] = []shared.FunctionDefinitionParam{}
 		}
 		definitions[reg.Capability] = append(definitions[reg.Capability], reg.Definition)
 	}
 	return definitions
 }
 
-func GetFunctionDefinitionsForCapabilities(capabilities []string) []llm.FunctionDecl {
-	var definitions []llm.FunctionDecl
+func GetFunctionDefinitionsForCapabilities(capabilities []string) []openai.ChatCompletionToolUnionParam {
+	var tools []openai.ChatCompletionToolUnionParam
 	for _, reg := range functionMap {
 		if (reg.Capability == "" || slices.Contains(capabilities, reg.Capability)) &&
 			(reg.AntiCapability == "" || !slices.Contains(capabilities, reg.AntiCapability)) {
-			definitions = append(definitions, reg.Definition)
+			tools = append(tools, openai.ChatCompletionToolUnionParam{
+				OfFunction: &openai.ChatCompletionFunctionToolParam{
+					Function: reg.Definition,
+				},
+			})
 		}
 	}
-	return definitions
+	return tools
 }
 func GetFunctionRegistration(fn string) *Registration {
 	if realFunction, ok := functionAliases[fn]; ok {

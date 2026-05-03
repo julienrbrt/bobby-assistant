@@ -3,12 +3,13 @@ package functions
 import (
 	"context"
 	"fmt"
-	"github.com/pebble-dev/bobby-assistant/service/assistant/llm"
+	"github.com/honeycombio/beeline-go"
+	"github.com/openai/openai-go/v3"
+	"github.com/openai/openai-go/v3/shared"
 	"github.com/pebble-dev/bobby-assistant/service/assistant/query"
 	"github.com/pebble-dev/bobby-assistant/service/assistant/util/mapbox"
 	"github.com/umahmood/haversine"
 
-	"github.com/honeycombio/beeline-go"
 	"github.com/pebble-dev/bobby-assistant/service/assistant/quota"
 )
 
@@ -26,18 +27,18 @@ type GetLocationInput struct {
 
 func init() {
 	registerFunction(Registration{
-		Definition: llm.FunctionDecl{
+		Definition: shared.FunctionDefinitionParam{
 			Name:        "get_location",
-			Description: "Get the latitude and longitude of a given location. If the user's location is available, also provides the distance from the user.",
-			Parameters: &llm.Schema{
-				Type: "object",
-				Properties: map[string]*llm.Schema{
-					"place_name": {
-						Type:        "string",
-						Description: `The name of a place to locate, e.g. "San Francisco, CA, USA" or "Paris, France".`,
+			Description: openai.String("Get the latitude and longitude of a given location. If the user's location is available, also provides the distance from the user."),
+			Parameters: shared.FunctionParameters{
+				"type": "object",
+				"properties": map[string]any{
+					"place_name": map[string]any{
+						"type":        "string",
+						"description": `The name of a place to locate, e.g. "San Francisco, CA, USA" or "Paris, France".`,
 					},
 				},
-				Required: []string{"place_name"},
+				"required": []string{"place_name"},
 			},
 		},
 		Fn:        getLocationImpl,

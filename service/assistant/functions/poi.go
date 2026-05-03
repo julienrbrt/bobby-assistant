@@ -18,7 +18,8 @@ import (
 	"context"
 	"fmt"
 	"github.com/honeycombio/beeline-go"
-	"github.com/pebble-dev/bobby-assistant/service/assistant/llm"
+	"github.com/openai/openai-go/v3"
+	"github.com/openai/openai-go/v3/shared"
 	"github.com/pebble-dev/bobby-assistant/service/assistant/query"
 	"github.com/pebble-dev/bobby-assistant/service/assistant/quota"
 	"github.com/pebble-dev/bobby-assistant/service/assistant/util"
@@ -36,26 +37,26 @@ type POIResponse struct {
 
 func init() {
 	registerFunction(Registration{
-		Definition: llm.FunctionDecl{
+		Definition: shared.FunctionDefinitionParam{
 			Name:        "poi",
-			Description: "Look up points of interest near the user's location (or another named location).",
-			Parameters: &llm.Schema{
-				Type: "object",
-				Properties: map[string]*llm.Schema{
-					"query": {
-						Type:        "string",
-						Description: "The search query to use to find points of interest. Could be a name (e.g. \"McDonald's\"), a category (e.g. \"restaurant\" or \"pizza\"), or another search term.",
+			Description: openai.String("Look up points of interest near the user's location (or another named location)."),
+			Parameters: shared.FunctionParameters{
+				"type": "object",
+				"properties": map[string]any{
+					"query": map[string]any{
+						"type":        "string",
+						"description": "The search query to use to find points of interest. Could be a name (e.g. \"McDonald's\"), a category (e.g. \"restaurant\" or \"pizza\"), or another search term.",
 					},
-					"location": {
-						Type:        "string",
-						Description: "The name of the location to search near. If not provided, the user's current location will be used. Assume that no location should be provided unless explicitly requested: not providing one results in more accurate answers.",
+					"location": map[string]any{
+						"type":        "string",
+						"description": "The name of the location to search near. If not provided, the user's current location will be used. Assume that no location should be provided unless explicitly requested: not providing one results in more accurate answers.",
 					},
-					"languageCode": {
-						Type:        "string",
-						Description: "The language code (e.g. `es` or `pt-BR`) to use for the search results.",
+					"languageCode": map[string]any{
+						"type":        "string",
+						"description": "The language code (e.g. `es` or `pt-BR`) to use for the search results.",
 					},
 				},
-				Required: []string{"query", "languageCode"},
+				"required": []string{"query", "languageCode"},
 			},
 		},
 		Fn:        searchPoi,

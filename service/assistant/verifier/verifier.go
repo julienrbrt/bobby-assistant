@@ -57,10 +57,10 @@ func DetermineActions(ctx context.Context, qt *quota.Tracker, message string) ([
 
 	cfg := config.GetConfig()
 	opts := []option.RequestOption{
-		option.WithAPIKey(cfg.APIKey),
+		option.WithAPIKey(cfg.LLMAPIKey),
 	}
-	if cfg.BaseURL != "" {
-		opts = append(opts, option.WithBaseURL(cfg.BaseURL))
+	if cfg.LLMBaseURL != "" {
+		opts = append(opts, option.WithBaseURL(cfg.LLMBaseURL))
 	}
 	client := openai.NewClient(opts...)
 
@@ -70,7 +70,7 @@ func DetermineActions(ctx context.Context, qt *quota.Tracker, message string) ([
 	defer cancelTimeout()
 
 	response, err := client.Chat.Completions.New(timeoutCtx, openai.ChatCompletionNewParams{
-		Model: openai.ChatModel(cfg.Model),
+		Model: openai.ChatModel(cfg.LLMModel),
 		Messages: []openai.ChatCompletionMessageParamUnion{
 			openai.SystemMessage(SYSTEM_PROMPT),
 			openai.UserMessage(message),

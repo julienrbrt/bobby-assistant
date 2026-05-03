@@ -66,61 +66,12 @@ func NewPromptSession(redisClient *redis.Client, rw http.ResponseWriter, r *http
 func newOpenAIClient() openai.Client {
 	cfg := config.GetConfig()
 	opts := []option.RequestOption{
-		option.WithAPIKey(cfg.APIKey),
+		option.WithAPIKey(cfg.LLMAPIKey),
 	}
-	if cfg.BaseURL != "" {
-		opts = append(opts, option.WithBaseURL(cfg.BaseURL))
+	if cfg.LLMBaseURL != "" {
+		opts = append(opts, option.WithBaseURL(cfg.LLMBaseURL))
 	}
 	return openai.NewClient(opts...)
-}
-
-func toOpenAITools(defs []llm.FunctionDecl) []openai.ChatCompletionToolUnionParam {
-	var tools []openai.ChatCompletionToolUnionParam
-	for _, d := range defs {
-		params := schemaToMap(d.Parameters)
-		tools = append(tools, openai.ChatCompletionToolUnionParam{
-			OfFunction: &openai.ChatCompletionFunctionToolParam{
-				Function: openai.FunctionDefinitionParam{
-					Name:        d.Name,
-					Description: openai.String(d.Description),
-					Parameters:  params,
-				},
-			},
-		})
-	}
-	return tools
-}
-
-func schemaToMap(s *llm.Schema) map[string]any {
-	if s == nil {
-		return nil
-	}
-	m := map[string]any{
-		"type": s.Type,
-	}
-	if len(s.Properties) > 0 {
-		props := make(map[string]any)
-		for k, v := range s.Properties {
-			props[k] = schemaToMap(v)
-		}
-		m["properties"] = props
-	}
-	if len(s.Required) > 0 {
-		m["required"] = s.Required
-	}
-	if s.Description != "" {
-		m["description"] = s.Description
-	}
-	if len(s.Enum) > 0 {
-		m["enum"] = s.Enum
-	}
-	if s.Format != "" {
-		m["format"] = s.Format
-	}
-	if s.Items != nil {
-		m["items"] = schemaToMap(s.Items)
-	}
-	return m
 }
 
 func messagesToOpenAI(systemPrompt string, messages []*llm.ChatMessage) []openai.ChatCompletionMessageParamUnion {
@@ -218,14 +169,13 @@ func (ps *PromptSession) Run(ctx context.Context) {
 			iterations++
 			var tools []openai.ChatCompletionToolUnionParam
 			if iterations <= 10 {
-				defs := functions.GetFunctionDefinitionsForCapabilities(query.SupportedActionsFromContext(ctx))
-				tools = toOpenAITools(defs)
+				tools = functions.GetFunctionDefinitionsForCapabilities(query.SupportedActionsFromContext(ctx))
 			}
 			systemPrompt := ps.generateSystemPrompt(ctx)
 			streamCtx, streamSpan := beeline.StartSpan(ctx, "chat_stream")
 
 			params := openai.ChatCompletionNewParams{
-				Model:       openai.ChatModel(cfg.Model),
+				Model:       openai.ChatModel(cfg.LLMModel),
 				Messages:    messagesToOpenAI(systemPrompt, messages),
 				Temperature: openai.Float(0.5),
 			}
@@ -236,7 +186,7 @@ func (ps *PromptSession) Run(ctx context.Context) {
 			stream := client.Chat.Completions.NewStreaming(streamCtx, params)
 
 			var functionCall *llm.FunctionCall
-			var content strings.Builder
+			content := ""
 			var currentToolCallID string
 			var currentToolCallName string
 			var currentToolCallArgs strings.Builder
@@ -346,7 +296,7 @@ func (ps *PromptSession) Run(ctx context.Context) {
 						}
 					}
 				}
-				content.WriteString(ourContent)
+				content += ourContent
 			}
 			if err := stream.Err(); err != nil {
 				streamSpan.AddField("error", err)
@@ -383,10 +333,10 @@ func (ps *PromptSession) Run(ctx context.Context) {
 				totalOutputTokens += usageCompletionTokens
 			}
 
-			if len(strings.TrimSpace(content.String())) > 0 {
+			if len(strings.TrimSpace(content)) > 0 {
 				messages = append(messages, &llm.ChatMessage{
 					Role:    "assistant",
-					Content: content.String(),
+					Content: content,
 				})
 			}
 			if functionCall != nil {

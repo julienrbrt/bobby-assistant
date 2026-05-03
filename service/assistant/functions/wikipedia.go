@@ -1,17 +1,3 @@
-// Copyright 2025 Google LLC
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//      http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
-
 package functions
 
 import (
@@ -26,7 +12,8 @@ import (
 	"strings"
 
 	"github.com/honeycombio/beeline-go"
-	"github.com/pebble-dev/bobby-assistant/service/assistant/llm"
+	"github.com/openai/openai-go/v3"
+	"github.com/openai/openai-go/v3/shared"
 	"github.com/pebble-dev/bobby-assistant/service/assistant/quota"
 )
 
@@ -47,27 +34,27 @@ var urlMap = map[string]string{
 
 func init() {
 	registerFunction(Registration{
-		Definition: llm.FunctionDecl{
+		Definition: shared.FunctionDefinitionParam{
 			Name:        "wikipedia",
-			Description: "Look up the content of a single named wiki article, from Wikipedia or topic-specific wikis like Bulbapedia. Never say the wiki page didn't have the information needed without first trying to fetch the complete article.",
-			Parameters: &llm.Schema{
-				Type: "object",
-				Properties: map[string]*llm.Schema{
-					"wiki": {
-						Type:        "string",
-						Description: "The Wiki to search.",
-						Enum:        []string{"wikipedia", "bulbapedia"},
+			Description: openai.String("Look up the content of a single named wiki article, from Wikipedia or topic-specific wikis like Bulbapedia. Never say the wiki page didn't have the information needed without first trying to fetch the complete article."),
+			Parameters: shared.FunctionParameters{
+				"type": "object",
+				"properties": map[string]any{
+					"wiki": map[string]any{
+						"type":        "string",
+						"description": "The Wiki to search.",
+						"enum":        []string{"wikipedia", "bulbapedia"},
 					},
-					"article_name": {
-						Type:        "string",
-						Description: "The name of the article to look up",
+					"article_name": map[string]any{
+						"type":        "string",
+						"description": "The name of the article to look up",
 					},
-					"complete_article": {
-						Type:        "boolean",
-						Description: "Whether to return the complete article or just the summary. Prefer to fetch only the summary. If the summary didn't have the information you expected, you can try again with the complete article.",
+					"complete_article": map[string]any{
+						"type":        "boolean",
+						"description": "Whether to return the complete article or just the summary. Prefer to fetch only the summary. If the summary didn't have the information you expected, you can try again with the complete article.",
 					},
 				},
-				Required: []string{"wiki", "article_name"},
+				"required": []string{"wiki", "article_name"},
 			},
 		},
 		Fn:                        queryWiki,
