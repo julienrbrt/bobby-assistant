@@ -5,8 +5,8 @@ import (
 	"fmt"
 
 	"github.com/getsentry/sentry-go"
-	gmaps "googlemaps.github.io/maps"
 	"github.com/pebble-dev/bobby-assistant/service/assistant/query"
+	gmaps "googlemaps.github.io/maps"
 )
 
 type Location struct {
@@ -58,7 +58,7 @@ func ReverseGeocode(ctx context.Context, lon, lat float64) (*gmaps.GeocodingResu
 	ctx = span.Context()
 	defer span.Finish()
 	req := &gmaps.GeocodingRequest{
-		LatLng:   &gmaps.LatLng{Lat: lat, Lng: lon},
+		LatLng:     &gmaps.LatLng{Lat: lat, Lng: lon},
 		ResultType: []string{"locality", "administrative_area_level_1", "country"},
 	}
 	results, err := client.ReverseGeocode(ctx, req)

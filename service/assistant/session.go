@@ -137,7 +137,7 @@ func (ps *PromptSession) Run(ctx context.Context) {
 	totalOutputTokens := 0
 	iterations := 0
 	for {
-			cont, err := func() (bool, error) {
+		cont, err := func() (bool, error) {
 			var err error
 			span := sentry.StartSpan(ctx, "chat_iteration")
 			ctx = span.Context()
