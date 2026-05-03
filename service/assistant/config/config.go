@@ -21,10 +21,7 @@ import (
 	"github.com/joho/godotenv"
 )
 
-// TODO: something reasonable.
-
 type Config struct {
-	BaseURL                string
 	DBPath                 string
 	SentryDSN              string
 	GoogleMapsStaticKey    string
@@ -52,7 +49,6 @@ func init() {
 		dbPath = "bobby.db"
 	}
 	c = Config{
-		BaseURL:                os.Getenv("BASE_URL"),
 		DBPath:                 dbPath,
 		SentryDSN:              os.Getenv("SENTRY_DSN"),
 		GoogleMapsStaticKey:    os.Getenv("GOOGLE_MAPS_STATIC_KEY"),
