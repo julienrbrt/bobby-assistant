@@ -22,7 +22,6 @@ import (
 	"github.com/getsentry/sentry-go"
 	"github.com/openai/openai-go/v3"
 	"github.com/openai/openai-go/v3/shared"
-	"github.com/pebble-dev/bobby-assistant/service/assistant/quota"
 
 	"github.com/pebble-dev/bobby-assistant/service/assistant/query"
 )
@@ -106,7 +105,7 @@ func init() {
 	})
 }
 
-func setReminder(ctx context.Context, quotaTracker *quota.Tracker, args any, requestChan chan<- map[string]any, responseChan <-chan map[string]any) any {
+func setReminder(ctx context.Context, args any, requestChan chan<- map[string]any, responseChan <-chan map[string]any) any {
 	span := sentry.StartSpan(ctx, "set_reminder")
 	ctx = span.Context()
 	defer span.Finish()
@@ -136,7 +135,7 @@ func setReminder(ctx context.Context, quotaTracker *quota.Tracker, args any, req
 	return resp
 }
 
-func getReminders(ctx context.Context, quotaTracker *quota.Tracker, args any, requestChan chan<- map[string]any, responseChan <-chan map[string]any) any {
+func getReminders(ctx context.Context, args any, requestChan chan<- map[string]any, responseChan <-chan map[string]any) any {
 	span := sentry.StartSpan(ctx, "get_reminders")
 	ctx = span.Context()
 	defer span.Finish()
@@ -154,7 +153,7 @@ func getReminders(ctx context.Context, quotaTracker *quota.Tracker, args any, re
 	return resp
 }
 
-func deleteReminder(ctx context.Context, quotaTracker *quota.Tracker, args any, requestChan chan<- map[string]any, responseChan <-chan map[string]any) any {
+func deleteReminder(ctx context.Context, args any, requestChan chan<- map[string]any, responseChan <-chan map[string]any) any {
 	span := sentry.StartSpan(ctx, "delete_reminder")
 	ctx = span.Context()
 	defer span.Finish()

@@ -23,8 +23,6 @@ import (
 	"github.com/pebble-dev/bobby-assistant/service/assistant/query"
 	"github.com/pebble-dev/bobby-assistant/service/assistant/util/mapbox"
 	"github.com/umahmood/haversine"
-
-	"github.com/pebble-dev/bobby-assistant/service/assistant/quota"
 )
 
 type LocationResponse struct {
@@ -66,7 +64,7 @@ func getLocationThought(args any) string {
 	return fmt.Sprintf("Locating %q", arg.PlaceName)
 }
 
-func getLocationImpl(ctx context.Context, quotaTracker *quota.Tracker, args any) any {
+func getLocationImpl(ctx context.Context, args any) any {
 	span := sentry.StartSpan(ctx, "get_location")
 	ctx = span.Context()
 	defer span.Finish()

@@ -16,7 +16,6 @@
 
 var location = require('./location');
 var session = require('./session');
-var quota = require('./quota');
 var Clay = require('@rebble/clay');
 var clayConfig = require('./config.json');
 var customConfigFunction = require('./custom_config');
@@ -28,20 +27,8 @@ var package_json = require('package.json');
 var clay = new Clay(clayConfig, customConfigFunction);
 
 function main() {
-    doQuotaWarning();
     location.update();
     Pebble.addEventListener('appmessage', handleAppMessage);
-}
-
-function doQuotaWarning() {
-    quota.fetchQuota(function(response) {
-        if (!response.hasSubscription) {
-            Pebble.showSimpleNotificationOnPebble(
-                "Subscription Needed",
-                "In order to use Bobby, you need a Rebble subscription. You can sign up for a subscription at auth.rebble.io."
-            );
-        }
-    });
 }
 
 function handleAppMessage(e) {
@@ -59,10 +46,6 @@ function handleAppMessage(e) {
         return;
     }
 
-    if (data.QUOTA_REQUEST) {
-        console.log("Requesting quota...");
-        quota.handleQuotaRequest();
-    }
     if ('LOCATION_ENABLED' in data) {
         config.setSetting("LOCATION_ENABLED", !!data.LOCATION_ENABLED);
         console.log("Location enabled: " + config.isLocationEnabled());
@@ -81,8 +64,6 @@ function doCobbleWarning() {
 
 Pebble.addEventListener("ready",
     function(e) {
-        // This happens before anything else because I don't trust Cobble to get through the normal flow,
-        // given how many things bizarrely don't work.
         doCobbleWarning();
         console.log("Bobby " + package_json['version']);
         if (Pebble.platform === 'pypkjs') {
@@ -91,12 +72,6 @@ Pebble.addEventListener("ready",
             emulator_main.main();
             return;
         }
-        Pebble.getTimelineToken(function(token) {
-            console.log("Entering real mode.");
-            session.userToken = token;
-            main();
-        }, function(e) {
-            console.log("Get timeline token failed???", e);
-        })
+        main();
     }
 );

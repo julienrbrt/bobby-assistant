@@ -28,7 +28,6 @@ import (
 	"github.com/getsentry/sentry-go"
 	"github.com/openai/openai-go/v3"
 	"github.com/openai/openai-go/v3/shared"
-	"github.com/pebble-dev/bobby-assistant/service/assistant/quota"
 )
 
 type WikiRequest struct {
@@ -86,7 +85,7 @@ func queryWikiThought(i any) string {
 	return fmt.Sprintf("Looking up %q...", args.Query)
 }
 
-func queryWiki(ctx context.Context, quotaTracker *quota.Tracker, args any) any {
+func queryWiki(ctx context.Context, args any) any {
 	req := args.(*WikiRequest)
 	if _, ok := urlMap[req.Wiki]; !ok {
 		return Error{Error: "Unknown wiki: " + req.Wiki}

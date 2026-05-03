@@ -21,7 +21,6 @@ import (
 	"github.com/openai/openai-go/v3"
 	"github.com/openai/openai-go/v3/shared"
 	"github.com/pebble-dev/bobby-assistant/service/assistant/query"
-	"github.com/pebble-dev/bobby-assistant/service/assistant/quota"
 	"github.com/pebble-dev/bobby-assistant/service/assistant/util"
 	"github.com/pebble-dev/bobby-assistant/service/assistant/util/mapbox"
 	"github.com/umahmood/haversine"
@@ -74,7 +73,7 @@ func searchPoiThought(args any) string {
 	return fmt.Sprintf("Looking for %s nearby...", poiQuery.Query)
 }
 
-func searchPoi(ctx context.Context, quotaTracker *quota.Tracker, args any) any {
+func searchPoi(ctx context.Context, args any) any {
 	span := sentry.StartSpan(ctx, "search_poi")
 	ctx = span.Context()
 	defer span.Finish()
@@ -106,10 +105,6 @@ func searchPoi(ctx context.Context, quotaTracker *quota.Tracker, args any) any {
 		return Error{Error: "Error creating places service: " + err.Error()}
 	}
 	log.Printf("Searching for POIs matching %q", poiQuery.Query)
-	err = quotaTracker.ChargeUserOrGlobalQuota(ctx, "gplaces_text_search", 1000, quota.PoiSearchCredits)
-	if err != nil {
-		return Error{Error: "Error charging quota: " + err.Error()}
-	}
 	results, err := placeService.Places.SearchText(&places.GoogleMapsPlacesV1SearchTextRequest{
 		LocationBias: &places.GoogleMapsPlacesV1SearchTextRequestLocationBias{
 			Circle: &places.GoogleMapsPlacesV1Circle{

@@ -25,9 +25,11 @@ import (
 	"time"
 
 	"github.com/getsentry/sentry-go"
-	"github.com/redis/go-redis/v9"
+	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 
 	"github.com/pebble-dev/bobby-assistant/service/assistant/config"
+	"github.com/pebble-dev/bobby-assistant/service/assistant/persistence"
 	"github.com/pebble-dev/bobby-assistant/service/assistant/util/storage"
 )
 
@@ -46,14 +48,14 @@ var sharedCurrencyDataManagerOnce sync.Once
 func GetCurrencyDataManager() *DataManager {
 	sharedCurrencyDataManagerOnce.Do(func() {
 		sharedCurrencyDataManager = &DataManager{
-			redisClient: storage.GetRedis(),
+			db: storage.GetDB(),
 		}
 	})
 	return sharedCurrencyDataManager
 }
 
 type DataManager struct {
-	redisClient *redis.Client
+	db *gorm.DB
 }
 
 var ErrUnknownCurrency = errors.New("unknown currency code")
@@ -73,8 +75,6 @@ func (dm *DataManager) GetExchangeData(ctx context.Context, from string) (*Curre
 	if data != nil {
 		return data, nil
 	}
-	// TODO: if we had high usage, we should prevent multiple concurrent requests for the same currency
-	//       but in practice this seems unlikely to be a major issue at our anticipated scale.
 	data, err = dm.fetchExchangeRateData(ctx, from)
 	if err != nil {
 		return nil, fmt.Errorf("couldn't fetch exchange rate data: %w", err)
@@ -128,30 +128,32 @@ func (dm *DataManager) cacheData(ctx context.Context, currency string, data *Cur
 		return err
 	}
 	expirationTime := time.Unix(int64(data.TimeNextUpdateUnix+5), 0)
-	if err := dm.redisClient.Set(ctx, keyFromCurrency(currency), encoded, expirationTime.Sub(time.Now())).Err(); err != nil {
-		return err
-	}
-	return nil
+	return dm.db.WithContext(ctx).Clauses(clause.OnConflict{
+		UpdateAll: true,
+	}).Create(&persistence.ExchangeRate{
+		Currency:  currency,
+		Data:      string(encoded),
+		ExpiresAt: expirationTime,
+	}).Error
 }
 
 func (dm *DataManager) loadCachedData(ctx context.Context, currency string) (*CurrencyExchangeData, error) {
 	span := sentry.StartSpan(ctx, "load_cached_data")
 	ctx = span.Context()
 	defer span.Finish()
-	data, err := dm.redisClient.Get(ctx, keyFromCurrency(currency)).Result()
-	if err != nil {
-		if errors.Is(err, redis.Nil) {
+	var rate persistence.ExchangeRate
+	if err := dm.db.WithContext(ctx).Where("currency = ?", currency).First(&rate).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, nil
 		}
 		return nil, err
 	}
+	if rate.ExpiresAt.Before(time.Now()) {
+		return nil, nil
+	}
 	var decoded CurrencyExchangeData
-	if err := json.Unmarshal([]byte(data), &decoded); err != nil {
+	if err := json.Unmarshal([]byte(rate.Data), &decoded); err != nil {
 		return nil, err
 	}
 	return &decoded, nil
-}
-
-func keyFromCurrency(from string) string {
-	return "currency:" + from
 }

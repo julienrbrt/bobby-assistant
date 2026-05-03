@@ -15,26 +15,23 @@
 package assistant
 
 import (
-	"encoding/json"
 	"log"
 	"net/http"
 
-	"github.com/pebble-dev/bobby-assistant/service/assistant/quota"
-	"github.com/redis/go-redis/v9"
+	"gorm.io/gorm"
 )
 
 type Service struct {
-	mux   *http.ServeMux
-	redis *redis.Client
+	mux *http.ServeMux
+	db  *gorm.DB
 }
 
-func NewService(r *redis.Client) *Service {
+func NewService(db *gorm.DB) *Service {
 	s := &Service{
-		mux:   http.NewServeMux(),
-		redis: r,
+		mux: http.NewServeMux(),
+		db:  db,
 	}
 	s.mux.HandleFunc("/query", s.handleQuery)
-	s.mux.HandleFunc("/quota", s.handleQuota)
 	s.mux.HandleFunc("/heartbeat", s.handleHeartbeat)
 	s.mux.HandleFunc("/robots.txt", s.handleRobots)
 	return s
@@ -44,56 +41,8 @@ func (s *Service) handleHeartbeat(rw http.ResponseWriter, r *http.Request) {
 	_, _ = rw.Write([]byte("bobby"))
 }
 
-func (s *Service) handleQuota(rw http.ResponseWriter, r *http.Request) {
-	ctx := r.Context()
-	token := r.URL.Query().Get("token")
-	if token == "" {
-		log.Printf("No token provided.")
-		http.Error(rw, "No token provided.", http.StatusNotFound)
-		return
-	}
-	userInfo, err := quota.GetUserInfo(ctx, token)
-	if err != nil {
-		log.Printf("Error getting user info: %v", err)
-		http.Error(rw, err.Error(), http.StatusNotFound)
-		return
-	}
-	if !userInfo.HasSubscription {
-		response, err := json.Marshal(map[string]any{
-			"used":            0,
-			"remaining":       0,
-			"hasSubscription": false,
-		})
-		if err != nil {
-			log.Printf("Error marshalling quota response: %v", err)
-			http.Error(rw, err.Error(), http.StatusInternalServerError)
-			return
-		}
-		_, _ = rw.Write(response)
-		return
-	}
-	qt := quota.NewTracker(s.redis, userInfo.UserId)
-	used, remaining, err := qt.GetQuota(ctx)
-	if err != nil {
-		log.Printf("Error getting quota: %v", err)
-		http.Error(rw, err.Error(), http.StatusInternalServerError)
-		return
-	}
-	response, err := json.Marshal(map[string]any{
-		"used":            used,
-		"remaining":       remaining,
-		"hasSubscription": true,
-	})
-	if err != nil {
-		log.Printf("Error marshalling quota response: %v", err)
-		http.Error(rw, err.Error(), http.StatusInternalServerError)
-		return
-	}
-	_, _ = rw.Write(response)
-}
-
 func (s *Service) handleQuery(rw http.ResponseWriter, r *http.Request) {
-	session, err := NewPromptSession(s.redis, rw, r)
+	session, err := NewPromptSession(s.db, rw, r)
 	if err != nil {
 		log.Printf("Creating session failed: %v", err)
 		http.Error(rw, err.Error(), http.StatusInternalServerError)

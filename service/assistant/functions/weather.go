@@ -21,7 +21,6 @@ import (
 	"github.com/openai/openai-go/v3"
 	"github.com/openai/openai-go/v3/shared"
 	"github.com/pebble-dev/bobby-assistant/service/assistant/query"
-	"github.com/pebble-dev/bobby-assistant/service/assistant/quota"
 	"github.com/pebble-dev/bobby-assistant/service/assistant/util/mapbox"
 	"github.com/pebble-dev/bobby-assistant/service/assistant/util/weather"
 	"strings"
@@ -86,7 +85,7 @@ func weatherThought(i any) string {
 	return fmt.Sprintf("Checking the %s in %s...", weatherType, placeName)
 }
 
-func getWeather(ctx context.Context, quotaTracker *quota.Tracker, args any) any {
+func getWeather(ctx context.Context, args any) any {
 	span := sentry.StartSpan(ctx, "get_weather")
 	ctx = span.Context()
 	defer span.Finish()
@@ -110,7 +109,6 @@ func getWeather(ctx context.Context, quotaTracker *quota.Tracker, args any) any 
 		lat, lon = location.Lat, location.Lon
 	}
 
-	_ = quotaTracker.ChargeCredits(ctx, quota.WeatherQueryCredits)
 	switch arg.Kind {
 	case "current":
 		return processCurrentWeather(ctx, lat, lon, arg.Unit)

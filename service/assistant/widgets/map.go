@@ -9,7 +9,6 @@ import (
 	"github.com/getsentry/sentry-go"
 	"github.com/pebble-dev/bobby-assistant/service/assistant/config"
 	"github.com/pebble-dev/bobby-assistant/service/assistant/query"
-	"github.com/pebble-dev/bobby-assistant/service/assistant/quota"
 	"github.com/pebble-dev/bobby-assistant/service/assistant/util"
 	"github.com/pebble-dev/bobby-assistant/service/assistant/util/pbi"
 	gmaps "googlemaps.github.io/maps"
@@ -64,7 +63,7 @@ type MapWidget struct {
 	UserLocationY int16  `json:"user_location_y"`
 }
 
-func poiWidget(ctx context.Context, qt *quota.Tracker, markerString, includeLocationString string) (*MapWidget, error) {
+func poiWidget(ctx context.Context, markerString, includeLocationString string) (*MapWidget, error) {
 	includeLocation := strings.EqualFold(includeLocationString, "true")
 	markers := make(map[string]util.Coords)
 	threadContext := query.ThreadContextFromContext(ctx)
@@ -100,9 +99,6 @@ func poiWidget(ctx context.Context, qt *quota.Tracker, markerString, includeLoca
 			}
 		}
 	}
-	if err := qt.ChargeUserOrGlobalQuota(ctx, "gmap_static", 10000, quota.MapImageCredits); err != nil {
-		return nil, err
-	}
 	mapImage, err := generateMap(ctx, markers, userLocation)
 	if err != nil {
 		// Handle error
@@ -124,14 +120,11 @@ func poiWidget(ctx context.Context, qt *quota.Tracker, markerString, includeLoca
 	}, nil
 }
 
-func routeWidget(ctx context.Context, qt *quota.Tracker) (*MapWidget, error) {
+func routeWidget(ctx context.Context) (*MapWidget, error) {
 	threadContext := query.ThreadContextFromContext(ctx)
 	routeInfo := threadContext.ContextStorage.LastRoute
 	if routeInfo == nil {
 		return nil, fmt.Errorf("no route information available")
-	}
-	if err := qt.ChargeUserOrGlobalQuota(ctx, "gmap_static", 10000, quota.MapImageCredits); err != nil {
-		return nil, err
 	}
 	mapImage, err := generateRouteMap(ctx, routeInfo["route"].(map[string]any)["polyline"].(map[string]any)["PolylineType"].(map[string]any)["EncodedPolyline"].(string))
 	if err != nil {

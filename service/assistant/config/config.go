@@ -25,14 +25,10 @@ import (
 
 type Config struct {
 	BaseURL                string
-	LLMBaseURL             string
-	LLMAPIKey              string
-	LLMModel               string
+	DBPath                 string
 	MapboxKey              string
 	IBMKey                 string
 	ExchangeRateApiKey     string
-	RedisURL               string
-	UserIdentificationURL  string
 	SentryDSN              string
 	GoogleMapsStaticKey    string
 	GoogleMapsStaticSecret string
@@ -54,16 +50,16 @@ func init() {
 		}
 	}
 
+	dbPath := os.Getenv("DB_PATH")
+	if dbPath == "" {
+		dbPath = "bobby.db"
+	}
 	c = Config{
 		BaseURL:                os.Getenv("BASE_URL"),
-		LLMBaseURL:             os.Getenv("LLM_BASE_URL"),
-		LLMAPIKey:              os.Getenv("LLM_API_KEY"),
-		LLMModel:               os.Getenv("LLM_MODEL"),
+		DBPath:                 dbPath,
 		MapboxKey:              os.Getenv("MAPBOX_KEY"),
 		IBMKey:                 os.Getenv("IBM_KEY"),
 		ExchangeRateApiKey:     os.Getenv("EXCHANGE_RATE_API_KEY"),
-		RedisURL:               os.Getenv("REDIS_URL"),
-		UserIdentificationURL:  os.Getenv("USER_IDENTIFICATION_URL"),
 		SentryDSN:              os.Getenv("SENTRY_DSN"),
 		GoogleMapsStaticKey:    os.Getenv("GOOGLE_MAPS_STATIC_KEY"),
 		GoogleMapsStaticSecret: os.Getenv("GOOGLE_MAPS_STATIC_SECRET"),

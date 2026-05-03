@@ -5,7 +5,6 @@ import (
 	"github.com/getsentry/sentry-go"
 	"github.com/openai/openai-go/v3"
 	"github.com/openai/openai-go/v3/shared"
-	"github.com/pebble-dev/bobby-assistant/service/assistant/quota"
 	"log"
 	"maps"
 
@@ -189,7 +188,7 @@ func init() {
 	})
 }
 
-func alarmImpl(ctx context.Context, quotaTracker *quota.Tracker, args any, requests chan<- map[string]any, responses <-chan map[string]any) any {
+func alarmImpl(ctx context.Context, args any, requests chan<- map[string]any, responses <-chan map[string]any) any {
 	span := sentry.StartSpan(ctx, "set_alarm")
 	ctx = span.Context()
 	defer span.Finish()
@@ -210,7 +209,7 @@ func alarmImpl(ctx context.Context, quotaTracker *quota.Tracker, args any, reque
 	return resp
 }
 
-func timerImpl(ctx context.Context, quotaTracker *quota.Tracker, args any, requests chan<- map[string]any, responses <-chan map[string]any) any {
+func timerImpl(ctx context.Context, args any, requests chan<- map[string]any, responses <-chan map[string]any) any {
 	span := sentry.StartSpan(ctx, "set_timer")
 	ctx = span.Context()
 	defer span.Finish()
@@ -253,7 +252,7 @@ func timerThought(i any) string {
 	}
 }
 
-func deleteAlarmImpl(ctx context.Context, quotaTracker *quota.Tracker, args any, requests chan<- map[string]any, responses <-chan map[string]any) any {
+func deleteAlarmImpl(ctx context.Context, args any, requests chan<- map[string]any, responses <-chan map[string]any) any {
 	span := sentry.StartSpan(ctx, "delete_alarm")
 	ctx = span.Context()
 	defer span.Finish()
@@ -273,7 +272,7 @@ func deleteAlarmImpl(ctx context.Context, quotaTracker *quota.Tracker, args any,
 	return resp
 }
 
-func deleteTimerImpl(ctx context.Context, quotaTracker *quota.Tracker, args any, requests chan<- map[string]any, responses <-chan map[string]any) any {
+func deleteTimerImpl(ctx context.Context, args any, requests chan<- map[string]any, responses <-chan map[string]any) any {
 	span := sentry.StartSpan(ctx, "delete_timer")
 	ctx = span.Context()
 	defer span.Finish()
@@ -301,7 +300,7 @@ func deleteTimerThought(i any) string {
 	return "Deleting a timer"
 }
 
-func getAlarmImpl(ctx context.Context, quotaTracker *quota.Tracker, args any, requests chan<- map[string]any, responses <-chan map[string]any) any {
+func getAlarmImpl(ctx context.Context, args any, requests chan<- map[string]any, responses <-chan map[string]any) any {
 	span := sentry.StartSpan(ctx, "get_alarm")
 	ctx = span.Context()
 	defer span.Finish()
@@ -319,7 +318,7 @@ func getAlarmImpl(ctx context.Context, quotaTracker *quota.Tracker, args any, re
 	return resp
 }
 
-func getTimerImpl(ctx context.Context, quotaTracker *quota.Tracker, args any, requests chan<- map[string]any, responses <-chan map[string]any) any {
+func getTimerImpl(ctx context.Context, args any, requests chan<- map[string]any, responses <-chan map[string]any) any {
 	span := sentry.StartSpan(ctx, "get_timer")
 	ctx = span.Context()
 	defer span.Finish()

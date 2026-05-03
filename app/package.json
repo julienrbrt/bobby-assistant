@@ -48,9 +48,6 @@
       "CANCEL_ALARM_IS_TIMER",
       "LANGUAGE_CODE",
       "UNIT_PREFERENCE",
-      "QUOTA_REQUEST",
-      "QUOTA_RESPONSE_USED",
-      "QUOTA_RESPONSE_REMAINING",
       "LOCATION_ENABLED",
       "WARNING",
       "WEATHER_WIDGET",
@@ -84,7 +81,6 @@
       "HIGHLIGHT_WIDGET",
       "HIGHLIGHT_WIDGET_PRIMARY",
       "HIGHLIGHT_WIDGET_SECONDARY",
-      "QUOTA_HAS_SUBSCRIPTION",
       "QUICK_LAUNCH_BEHAVIOUR",
       "TIMER_VIBE_PATTERN",
       "ALARM_VIBE_PATTERN",
@@ -358,24 +354,6 @@
         {
           "file": "icons/menu_legal_bw.png",
           "name": "MENU_ICON_LEGAL",
-          "type": "bitmap",
-          "memoryFormat": "1Bit",
-          "targetPlatforms": [
-            "diorite"
-          ]
-        },
-        {
-          "file": "icons/menu_quota.png",
-          "name": "MENU_ICON_QUOTA",
-          "type": "bitmap",
-          "targetPlatforms": [
-            "basalt",
-            "emery"
-          ]
-        },
-        {
-          "file": "icons/menu_quota_bw.png",
-          "name": "MENU_ICON_QUOTA",
           "type": "bitmap",
           "memoryFormat": "1Bit",
           "targetPlatforms": [

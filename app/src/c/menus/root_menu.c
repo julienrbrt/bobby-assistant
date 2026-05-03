@@ -15,7 +15,6 @@
  */
 
 #include "root_menu.h"
-#include "quota_window.h"
 #include "alarm_menu.h"
 #include "about_window.h"
 #include "legal_window.h"
@@ -29,7 +28,6 @@
 
 static void prv_window_load(Window* window);
 static void prv_window_unload(Window* window);
-static void prv_push_quota_screen(int index, void* context);
 static void prv_push_alarm_screen(int index, void* context);
 static void prv_push_timer_screen(int index, void* context);
 static void prv_push_about_screen(int index, void* context);
@@ -39,7 +37,7 @@ static void prv_push_reminders_screen(int index, void* context);
 static SimpleMenuSection s_menu_section = {
   .num_items = 0,
 };
-static SimpleMenuItem s_menu_items[6];
+static SimpleMenuItem s_menu_items[5];
 
 typedef struct {
   SimpleMenuLayer *menu_layer;
@@ -60,7 +58,6 @@ void root_menu_window_push() {
 
 static void prv_window_load(Window* window) {
   BOBBY_LOG(APP_LOG_LEVEL_DEBUG_VERBOSE, "Loading root menu window...");
-  // This setup has to be done separately because otherwise the initializer isn't constant.
   if (s_menu_section.num_items == 0) {
     s_menu_items[0] = (SimpleMenuItem) {
       .title = "Alarms",
@@ -78,21 +75,16 @@ static void prv_window_load(Window* window) {
       .icon = bgbitmap_create_with_resource(RESOURCE_ID_MENU_ICON_REMINDERS),
     };
     s_menu_items[3] = (SimpleMenuItem) {
-      .title = "Quota",
-      .callback = prv_push_quota_screen,
-      .icon = bgbitmap_create_with_resource(RESOURCE_ID_MENU_ICON_QUOTA),
-    };
-    s_menu_items[4] = (SimpleMenuItem) {
       .title = "About",
       .callback = prv_push_about_screen,
       .icon = bgbitmap_create_with_resource(RESOURCE_ID_MENU_ICON_ABOUT),
     };
-    s_menu_items[5] = (SimpleMenuItem) {
+    s_menu_items[4] = (SimpleMenuItem) {
       .title = "Legal",
       .callback = prv_push_legal_screen,
       .icon = bgbitmap_create_with_resource(RESOURCE_ID_MENU_ICON_LEGAL),
     };
-    s_menu_section.num_items = 6;
+    s_menu_section.num_items = 5;
     s_menu_section.items = s_menu_items;
   }
 
@@ -121,10 +113,6 @@ static void prv_window_unload(Window* window) {
   s_menu_section.num_items = 0;
   free(data);
   window_destroy(window);
-}
-
-static void prv_push_quota_screen(int index, void* context) {
-  push_quota_window();
 }
 
 static void prv_push_alarm_screen(int index, void* context) {

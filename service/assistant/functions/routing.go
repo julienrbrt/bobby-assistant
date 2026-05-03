@@ -24,7 +24,6 @@ import (
 	"github.com/openai/openai-go/v3"
 	"github.com/openai/openai-go/v3/shared"
 	"github.com/pebble-dev/bobby-assistant/service/assistant/query"
-	"github.com/pebble-dev/bobby-assistant/service/assistant/quota"
 	"google.golang.org/api/option"
 	"google.golang.org/api/places/v1"
 	"google.golang.org/genproto/googleapis/type/latlng"
@@ -146,16 +145,12 @@ func resolveLocation(ctx context.Context, location string) (*routingpb.Waypoint,
 	}, nil
 }
 
-func placeIdToName(ctx context.Context, qt *quota.Tracker, placeId string) (displayName, placeType, address string, err error) {
+func placeIdToName(ctx context.Context, placeId string) (displayName, placeType, address string, err error) {
 	span := sentry.StartSpan(ctx, "place_id_to_name")
 	ctx = span.Context()
 	defer span.Finish()
 	placeService, err := places.NewService(ctx)
 	if err != nil {
-		return "", "", "", err
-	}
-	// somehow, knowing the name of a place is "pro", not "essential"
-	if err := qt.ChargeUserOrGlobalQuota(ctx, "gplaces_details_pro", 5000, quota.GPlacesLookupProCredits); err != nil {
 		return "", "", "", err
 	}
 	result, err := placeService.Places.Get("places/" + placeId).Fields("displayName,primaryTypeDisplayName,shortFormattedAddress").Do()
@@ -219,7 +214,7 @@ func nullableTimestrampFromString(timeStr string) (*timestamppb.Timestamp, error
 	return timestamppb.New(t), nil
 }
 
-func findRoute(ctx context.Context, quotaTracker *quota.Tracker, args any) any {
+func findRoute(ctx context.Context, args any) any {
 	span := sentry.StartSpan(ctx, "find_route")
 	ctx = span.Context()
 	defer span.Finish()
@@ -249,11 +244,6 @@ func findRoute(ctx context.Context, quotaTracker *quota.Tracker, args any) any {
 	}
 	if departureTime != nil && arrivalTime != nil {
 		return Error{Error: "departureTime and arrivalTime are mutually exclusive"}
-	}
-
-	err = quotaTracker.ChargeUserOrGlobalQuota(ctx, "gmaps_route", 5000, quota.RouteCalculationCredits)
-	if err != nil {
-		return Error{Error: "Error charging quota: " + err.Error()}
 	}
 
 	crr := routingpb.ComputeRoutesRequest{
@@ -295,7 +285,7 @@ func findRoute(ctx context.Context, quotaTracker *quota.Tracker, args any) any {
 		"route": routeToLegible(route),
 	}
 	if originPlace, ok := origin.LocationType.(*routingpb.Waypoint_PlaceId); ok {
-		placeName, placeType, placeAddress, err := placeIdToName(ctx, quotaTracker, originPlace.PlaceId)
+		placeName, placeType, placeAddress, err := placeIdToName(ctx, originPlace.PlaceId)
 		if err == nil {
 			resp["origin"] = map[string]string{
 				"name":    placeName,
@@ -307,7 +297,7 @@ func findRoute(ctx context.Context, quotaTracker *quota.Tracker, args any) any {
 		}
 	}
 	if destinationPlace, ok := destination.LocationType.(*routingpb.Waypoint_PlaceId); ok {
-		placeName, placeType, placeAddress, err := placeIdToName(ctx, quotaTracker, destinationPlace.PlaceId)
+		placeName, placeType, placeAddress, err := placeIdToName(ctx, destinationPlace.PlaceId)
 		if err == nil {
 			resp["destination"] = map[string]string{
 				"name":    placeName,

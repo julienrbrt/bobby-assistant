@@ -18,7 +18,6 @@ import (
 	"context"
 	"github.com/openai/openai-go/v3"
 	"github.com/openai/openai-go/v3/shared"
-	"github.com/pebble-dev/bobby-assistant/service/assistant/quota"
 	"strings"
 )
 
@@ -82,7 +81,7 @@ func init() {
 	})
 }
 
-func updateSettingsImpl(ctx context.Context, quotaTracker *quota.Tracker, i any, requestChan chan<- map[string]any, responseChan <-chan map[string]any) any {
+func updateSettingsImpl(ctx context.Context, i any, requestChan chan<- map[string]any, responseChan <-chan map[string]any) any {
 	arg := i.(*UpdateSettingsInput)
 	request := map[string]any{
 		"action": "update_settings",

@@ -9,6 +9,7 @@ import (
 	sentryhttp "github.com/getsentry/sentry-go/http"
 	"github.com/pebble-dev/bobby-assistant/service/assistant"
 	"github.com/pebble-dev/bobby-assistant/service/assistant/config"
+	"github.com/pebble-dev/bobby-assistant/service/assistant/persistence"
 	"github.com/pebble-dev/bobby-assistant/service/assistant/util/redact"
 	"github.com/pebble-dev/bobby-assistant/service/assistant/util/storage"
 )
@@ -27,7 +28,9 @@ func main() {
 
 	sentryHandler := sentryhttp.New(sentryhttp.Options{})
 
-	service := assistant.NewService(storage.GetRedis())
+	db := storage.GetDB()
+	persistence.InitDB(db)
+	service := assistant.NewService(db)
 	addr := "0.0.0.0:8080"
 	log.Printf("Listening on %s.", addr)
 	log.Fatal(http.ListenAndServe(addr, sentryHandler.Handle(service)))

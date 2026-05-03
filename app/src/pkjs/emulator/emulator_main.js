@@ -1,7 +1,6 @@
 var location = require("../location");
 var reminders = require("../reminders");
 var emulatorSession = require("./emulator_session");
-var quota = require("../quota");
 var config = require("../config");
 
 function main() {
@@ -25,10 +24,6 @@ function handleAppMessage(e) {
         return;
     }
 
-    if (data.QUOTA_REQUEST) {
-        console.log("Requesting quota...");
-        quota.handleQuotaRequest();
-    }
     if ('LOCATION_ENABLED' in data) {
         config.setSetting("LOCATION_ENABLED", !!data.LOCATION_ENABLED);
         console.log("Location enabled: " + config.isLocationEnabled());

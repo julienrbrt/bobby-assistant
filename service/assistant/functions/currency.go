@@ -23,7 +23,6 @@ import (
 	"github.com/openai/openai-go/v3"
 	"github.com/openai/openai-go/v3/shared"
 
-	"github.com/pebble-dev/bobby-assistant/service/assistant/quota"
 	"github.com/pebble-dev/bobby-assistant/service/assistant/util/currencies"
 )
 
@@ -69,7 +68,7 @@ func init() {
 	})
 }
 
-func convertCurrency(ctx context.Context, qt *quota.Tracker, input any) any {
+func convertCurrency(ctx context.Context, input any) any {
 	span := sentry.StartSpan(ctx, "convert_currency")
 	ctx = span.Context()
 	defer span.Finish()

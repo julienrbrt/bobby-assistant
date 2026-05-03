@@ -3,7 +3,6 @@ package widgets
 import (
 	"context"
 	"fmt"
-	"github.com/pebble-dev/bobby-assistant/service/assistant/quota"
 	"log"
 	"regexp"
 )
@@ -19,7 +18,7 @@ type Widget struct {
 	Type    string `json:"type"`
 }
 
-func ProcessWidget(ctx context.Context, qt *quota.Tracker, widget string) (any, error) {
+func ProcessWidget(ctx context.Context, widget string) (any, error) {
 	weatherWidgets := weatherWidgetRegex.FindAllStringSubmatch(widget, -1)
 	for _, weatherWidget := range weatherWidgets {
 		switch weatherWidget[1] {
@@ -68,7 +67,7 @@ func ProcessWidget(ctx context.Context, qt *quota.Tracker, widget string) (any, 
 	}
 	poiWidgets := poiWidgetRegex.FindAllStringSubmatch(widget, -1)
 	for _, w := range poiWidgets {
-		widget, err := poiWidget(ctx, qt, w[1], w[2])
+		widget, err := poiWidget(ctx, w[1], w[2])
 		if err != nil {
 			log.Printf("Error processing map widget: %v", err)
 			return nil, fmt.Errorf("error processing map widget: %w", err)
@@ -77,7 +76,7 @@ func ProcessWidget(ctx context.Context, qt *quota.Tracker, widget string) (any, 
 	}
 	routeWidgets := routeWidgetRegex.FindAllStringSubmatch(widget, -1)
 	for range routeWidgets {
-		widget, err := routeWidget(ctx, qt)
+		widget, err := routeWidget(ctx)
 		if err != nil {
 			log.Printf("Error processing route widget: %v", err)
 			return nil, fmt.Errorf("error processing route widget: %w", err)

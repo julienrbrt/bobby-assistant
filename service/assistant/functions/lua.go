@@ -20,7 +20,6 @@ import (
 	"github.com/getsentry/sentry-go"
 	"github.com/openai/openai-go/v3"
 	"github.com/openai/openai-go/v3/shared"
-	"github.com/pebble-dev/bobby-assistant/service/assistant/quota"
 	"log"
 	"math"
 	"strings"
@@ -67,7 +66,7 @@ func luaThought(args any) string {
 	return "Getting a calculator"
 }
 
-func luaImplementation(ctx context.Context, quotaTracker *quota.Tracker, args any) any {
+func luaImplementation(ctx context.Context, args any) any {
 	span := sentry.StartSpan(ctx, "run_lua")
 	ctx = span.Context()
 	defer span.Finish()

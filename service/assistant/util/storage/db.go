@@ -18,29 +18,22 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/redis/go-redis/v9"
+	"gorm.io/gorm"
+	"github.com/glebarez/sqlite"
 
 	"github.com/pebble-dev/bobby-assistant/service/assistant/config"
 )
 
-var onceRedis sync.Once
-var sharedRedis *redis.Client
+var onceDB sync.Once
+var sharedDB *gorm.DB
 
-func GetRedis() *redis.Client {
-	onceRedis.Do(func() {
-		r, err := connectRedis()
+func GetDB() *gorm.DB {
+	onceDB.Do(func() {
+		db, err := gorm.Open(sqlite.Open(config.GetConfig().DBPath), &gorm.Config{})
 		if err != nil {
-			panic(fmt.Errorf("error connecting to redis: %v", err))
+			panic(fmt.Errorf("error opening database: %v", err))
 		}
-		sharedRedis = r
+		sharedDB = db
 	})
-	return sharedRedis
-}
-
-func connectRedis() (*redis.Client, error) {
-	opt, err := redis.ParseURL(config.GetConfig().RedisURL)
-	if err != nil {
-		return nil, err
-	}
-	return redis.NewClient(opt), nil
+	return sharedDB
 }

@@ -140,6 +140,34 @@
         ]
     },
     {
+        "type": "section",
+        "items": [
+            {
+                "type": "heading",
+                "defaultValue": "LLM Configuration"
+            },
+            {
+                "type": "input",
+                "messageKey": "LLM_API_KEY",
+                "label": "API Key",
+                "description": "Your OpenAI-compatible API key."
+            },
+            {
+                "type": "input",
+                "messageKey": "LLM_BASE_URL",
+                "label": "Base URL",
+                "description": "Optional. The base URL for the API (e.g. https://api.openai.com/v1). Leave empty for default."
+            },
+            {
+                "type": "input",
+                "messageKey": "LLM_MODEL",
+                "label": "Model",
+                "description": "The model to use (e.g. gpt-4o-mini).",
+                "defaultValue": "gpt-4o-mini"
+            }
+        ]
+    },
+    {
         "type": "submit",
         "defaultValue": "Save"
     }

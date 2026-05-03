@@ -11,9 +11,6 @@ import (
 
 	"github.com/getsentry/sentry-go"
 	"github.com/pebble-dev/bobby-assistant/service/assistant/llm"
-
-	"github.com/pebble-dev/bobby-assistant/service/assistant/config"
-	"github.com/pebble-dev/bobby-assistant/service/assistant/quota"
 )
 
 const SYSTEM_PROMPT = `You are inspecting the output of another model.
@@ -51,27 +48,24 @@ type ActionCheck struct {
 	Action string `json:"action"` // "setting", "reporting", or "deleting"
 }
 
-func DetermineActions(ctx context.Context, qt *quota.Tracker, message string) ([]ActionCheck, error) {
+func DetermineActions(ctx context.Context, apiKey, baseURL, model string, message string) ([]ActionCheck, error) {
 	span := sentry.StartSpan(ctx, "determine_actions")
 	ctx = span.Context()
 	defer span.Finish()
 
-	cfg := config.GetConfig()
 	opts := []option.RequestOption{
-		option.WithAPIKey(cfg.LLMAPIKey),
+		option.WithAPIKey(apiKey),
 	}
-	if cfg.LLMBaseURL != "" {
-		opts = append(opts, option.WithBaseURL(cfg.LLMBaseURL))
+	if baseURL != "" {
+		opts = append(opts, option.WithBaseURL(baseURL))
 	}
 	client := openai.NewClient(opts...)
 
-	// We don't want to hold up the user for too long - if the model is responding slowly, just give up.
-	// Under normal circumstances, the P99 response time is around 600ms.
 	timeoutCtx, cancelTimeout := context.WithTimeout(ctx, 1500*time.Millisecond)
 	defer cancelTimeout()
 
 	response, err := client.Chat.Completions.New(timeoutCtx, openai.ChatCompletionNewParams{
-		Model: openai.ChatModel(cfg.LLMModel),
+		Model: openai.ChatModel(model),
 		Messages: []openai.ChatCompletionMessageParamUnion{
 			openai.SystemMessage(SYSTEM_PROMPT),
 			openai.UserMessage(message),
@@ -90,7 +84,8 @@ func DetermineActions(ctx context.Context, qt *quota.Tracker, message string) ([
 		outputTokens = int(response.Usage.CompletionTokens)
 	}
 
-	_ = qt.ChargeCredits(ctx, inputTokens*quota.LiteInputTokenCredits+outputTokens*quota.LiteOutputTokenCredits)
+	_ = inputTokens
+	_ = outputTokens
 
 	text := ""
 	if len(response.Choices) > 0 {
@@ -105,7 +100,7 @@ func DetermineActions(ctx context.Context, qt *quota.Tracker, message string) ([
 	return checks, nil
 }
 
-func FindLies(ctx context.Context, qt *quota.Tracker, message []*llm.ChatMessage) ([]string, error) {
+func FindLies(ctx context.Context, apiKey, baseURL, model string, message []*llm.ChatMessage) ([]string, error) {
 	if len(message) == 0 {
 		return nil, nil
 	}
@@ -125,7 +120,7 @@ func FindLies(ctx context.Context, qt *quota.Tracker, message []*llm.ChatMessage
 		return nil, nil
 	}
 
-	actions, err := DetermineActions(ctx, qt, lastAssistantMessage.Content)
+	actions, err := DetermineActions(ctx, apiKey, baseURL, model, lastAssistantMessage.Content)
 	if err != nil {
 		return nil, err
 	}

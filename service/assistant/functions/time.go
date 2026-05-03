@@ -23,7 +23,6 @@ import (
 	"github.com/getsentry/sentry-go"
 	"github.com/openai/openai-go/v3"
 	"github.com/openai/openai-go/v3/shared"
-	"github.com/pebble-dev/bobby-assistant/service/assistant/quota"
 )
 
 type TimeResponse struct {
@@ -74,7 +73,7 @@ func getTimeThought(args any) string {
 	return "Checking the time"
 }
 
-func getTimeElsewhere(ctx context.Context, quotaTracker *quota.Tracker, args any) any {
+func getTimeElsewhere(ctx context.Context, args any) any {
 	span := sentry.StartSpan(ctx, "get_time_elsewhere")
 	defer span.Finish()
 	arg := args.(*GetTimeInput)

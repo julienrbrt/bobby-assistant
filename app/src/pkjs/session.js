@@ -42,7 +42,7 @@ Session.prototype.run = function() {
         messageQueue.startLogging();
     }
     console.log("Opening websocket connection...");
-    var url = API_URL + '?prompt=' + encodeURIComponent(this.prompt) + '&token=' + exports.userToken;
+    var url = API_URL + '?prompt=' + encodeURIComponent(this.prompt);
     if (location.isReady() && config.isLocationEnabled()) {
         var loc = location.getPos();
         url += '&lon=' + loc.lon + '&lat=' + loc.lat;
@@ -116,6 +116,16 @@ Session.prototype.run = function() {
         url += '&supportsColour=' + supportsColour;
         url += '&screenWidth=' + screenWidth;
         url += '&screenHeight=' + screenHeight;
+    }
+
+    if (settings['LLM_API_KEY']) {
+        url += '&apiKey=' + encodeURIComponent(settings['LLM_API_KEY']);
+    }
+    if (settings['LLM_BASE_URL']) {
+        url += '&baseUrl=' + encodeURIComponent(settings['LLM_BASE_URL']);
+    }
+    if (settings['LLM_MODEL']) {
+        url += '&model=' + encodeURIComponent(settings['LLM_MODEL']);
     }
 
     console.log(url);
@@ -209,4 +219,3 @@ Session.prototype.handleClose = function(event) {
 }
 
 exports.Session = Session;
-exports.userToken = null;

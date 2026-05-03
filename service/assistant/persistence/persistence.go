@@ -17,12 +17,14 @@ package persistence
 import (
 	"context"
 	"encoding/json"
+	"time"
+
 	"github.com/getsentry/sentry-go"
 	"github.com/google/uuid"
+	"gorm.io/gorm"
+
 	"github.com/pebble-dev/bobby-assistant/service/assistant/llm"
 	"github.com/pebble-dev/bobby-assistant/service/assistant/util"
-	"github.com/redis/go-redis/v9"
-	"time"
 )
 
 type SerializedMessage struct {
@@ -44,26 +46,41 @@ type ThreadContext struct {
 	ContextStorage StoredContext       `json:"contextStorage"`
 }
 
+type Thread struct {
+	ID   string `gorm:"primaryKey"`
+	Data string
+}
+
+type ExchangeRate struct {
+	Currency  string `gorm:"primaryKey"`
+	Data      string
+	ExpiresAt time.Time
+}
+
 func NewContext() *ThreadContext {
 	return &ThreadContext{}
 }
 
-func LoadThread(ctx context.Context, r *redis.Client, id string) (*ThreadContext, error) {
+func InitDB(db *gorm.DB) {
+	db.AutoMigrate(&Thread{}, &ExchangeRate{})
+}
+
+func LoadThread(ctx context.Context, db *gorm.DB, id string) (*ThreadContext, error) {
 	span := sentry.StartSpan(ctx, "load_thread")
 	ctx = span.Context()
 	defer span.Finish()
-	j, err := r.Get(ctx, "thread:"+id).Result()
-	if err != nil {
+	var thread Thread
+	if err := db.WithContext(ctx).Where("id = ?", id).First(&thread).Error; err != nil {
 		return nil, err
 	}
 	var threadContext ThreadContext
-	if err := json.Unmarshal([]byte(j), &threadContext); err != nil {
+	if err := json.Unmarshal([]byte(thread.Data), &threadContext); err != nil {
 		return nil, err
 	}
 	return &threadContext, nil
 }
 
-func StoreThread(ctx context.Context, r *redis.Client, thread *ThreadContext) error {
+func StoreThread(ctx context.Context, db *gorm.DB, thread *ThreadContext) error {
 	span := sentry.StartSpan(ctx, "store_thread")
 	ctx = span.Context()
 	defer span.Finish()
@@ -71,6 +88,8 @@ func StoreThread(ctx context.Context, r *redis.Client, thread *ThreadContext) er
 	if err != nil {
 		return err
 	}
-	r.Set(ctx, "thread:"+thread.ThreadId.String(), j, 10*time.Minute)
-	return nil
+	return db.WithContext(ctx).Save(&Thread{
+		ID:   thread.ThreadId.String(),
+		Data: string(j),
+	}).Error
 }

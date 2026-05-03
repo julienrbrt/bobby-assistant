@@ -6,7 +6,6 @@ import (
 	"github.com/getsentry/sentry-go"
 	"github.com/pebble-dev/bobby-assistant/service/assistant/llm"
 	"github.com/pebble-dev/bobby-assistant/service/assistant/persistence"
-	"github.com/pebble-dev/bobby-assistant/service/assistant/quota"
 	"github.com/pebble-dev/bobby-assistant/service/assistant/verifier"
 	"github.com/pebble-dev/bobby-assistant/service/assistant/widgets"
 	"log"
@@ -19,10 +18,9 @@ import (
 	"github.com/google/uuid"
 	"github.com/openai/openai-go/v3"
 	"github.com/openai/openai-go/v3/option"
-	"github.com/pebble-dev/bobby-assistant/service/assistant/config"
 	"github.com/pebble-dev/bobby-assistant/service/assistant/functions"
 	"github.com/pebble-dev/bobby-assistant/service/assistant/query"
-	"github.com/redis/go-redis/v9"
+	"gorm.io/gorm"
 	"nhooyr.io/websocket"
 )
 
@@ -31,16 +29,19 @@ type PromptSession struct {
 	prompt           string
 	userToken        string
 	query            url.Values
-	redis            *redis.Client
+	db               *gorm.DB
 	threadId         uuid.UUID
 	originalThreadId string
+	llmAPIKey        string
+	llmBaseURL       string
+	llmModel         string
 }
 
 type QueryContext struct {
 	values url.Values
 }
 
-func NewPromptSession(redisClient *redis.Client, rw http.ResponseWriter, r *http.Request) (*PromptSession, error) {
+func NewPromptSession(db *gorm.DB, rw http.ResponseWriter, r *http.Request) (*PromptSession, error) {
 	prompt := r.URL.Query().Get("prompt")
 	userToken := r.URL.Query().Get("token")
 	originalThreadId := r.URL.Query().Get("threadId")
@@ -57,19 +58,19 @@ func NewPromptSession(redisClient *redis.Client, rw http.ResponseWriter, r *http
 		prompt:           prompt,
 		userToken:        userToken,
 		query:            r.URL.Query(),
-		redis:            redisClient,
+		db:               db,
 		threadId:         uuid.New(),
 		originalThreadId: originalThreadId,
+		llmAPIKey:        r.URL.Query().Get("apiKey"),
+		llmBaseURL:       r.URL.Query().Get("baseUrl"),
+		llmModel:         r.URL.Query().Get("model"),
 	}, nil
 }
 
-func newOpenAIClient() openai.Client {
-	cfg := config.GetConfig()
-	opts := []option.RequestOption{
-		option.WithAPIKey(cfg.LLMAPIKey),
-	}
-	if cfg.LLMBaseURL != "" {
-		opts = append(opts, option.WithBaseURL(cfg.LLMBaseURL))
+func (ps *PromptSession) newOpenAIClient() openai.Client {
+	opts := []option.RequestOption{option.WithAPIKey(ps.llmAPIKey)}
+	if ps.llmBaseURL != "" {
+		opts = append(opts, option.WithBaseURL(ps.llmBaseURL))
 	}
 	return openai.NewClient(opts...)
 }
@@ -113,8 +114,7 @@ func messagesToOpenAI(systemPrompt string, messages []*llm.ChatMessage) []openai
 
 func (ps *PromptSession) Run(ctx context.Context) {
 	ctx = query.ContextWith(ctx, ps.query)
-	cfg := config.GetConfig()
-	client := newOpenAIClient()
+	client := ps.newOpenAIClient()
 
 	var messages []*llm.ChatMessage
 	messages = append(messages, &llm.ChatMessage{
@@ -133,38 +133,12 @@ func (ps *PromptSession) Run(ctx context.Context) {
 		messages = append(oldMessages, messages...)
 	}
 	query.ThreadContextFromContext(ctx).ThreadId = ps.threadId
-	user, err := quota.GetUserInfo(ctx, ps.userToken)
-	if err != nil {
-		log.Printf("get user info failed: %v\n", err)
-		_ = ps.conn.Close(websocket.StatusInternalError, "get user info failed")
-		return
-	}
-	if hub := sentry.GetHubFromContext(ctx); hub != nil {
-		hub.Scope().SetTag("user_id", string(rune(user.UserId)))
-	}
-	if !user.HasSubscription {
-		log.Printf("user %d has no subscription\n", user.UserId)
-		_ = ps.conn.Close(websocket.StatusPolicyViolation, "You need an active Rebble subscription to use Bobby.")
-		return
-	}
-	qt := quota.NewTracker(ps.redis, user.UserId)
-	used, remaining, err := qt.GetQuota(ctx)
-	if err != nil {
-		log.Printf("get quota failed: %v\n", err)
-		_ = ps.conn.Close(websocket.StatusInternalError, "Quota lookup failed.")
-		return
-	}
-	if remaining < 1 {
-		log.Printf("quota exceeded for user %d\n", user.UserId)
-		_ = ps.conn.Close(websocket.StatusPolicyViolation, "You have exceeded your quota for this month.")
-		return
-	}
-	log.Printf("user %d has used %d / %d credits\n", user.UserId, used, remaining)
 	totalInputTokens := 0
 	totalOutputTokens := 0
 	iterations := 0
 	for {
-		cont, err := func() (bool, error) {
+			cont, err := func() (bool, error) {
+			var err error
 			span := sentry.StartSpan(ctx, "chat_iteration")
 			ctx = span.Context()
 			defer span.Finish()
@@ -178,7 +152,7 @@ func (ps *PromptSession) Run(ctx context.Context) {
 			streamCtx := streamSpan.Context()
 
 			params := openai.ChatCompletionNewParams{
-				Model:       openai.ChatModel(cfg.LLMModel),
+				Model:       openai.ChatModel(ps.llmModel),
 				Messages:    messagesToOpenAI(systemPrompt, messages),
 				Temperature: openai.Float(0.5),
 			}
@@ -254,7 +228,7 @@ func (ps *PromptSession) Run(ctx context.Context) {
 					splitting := true
 					if len(widget) > 0 {
 						for _, w := range widget {
-							processed, err := widgets.ProcessWidget(ctx, qt, w)
+							processed, err := widgets.ProcessWidget(ctx, w)
 							replacement := ""
 							if err != nil {
 								log.Printf("process widget failed: %v\n", err)
@@ -322,17 +296,9 @@ func (ps *PromptSession) Run(ctx context.Context) {
 			streamSpan.Finish()
 
 			if usagePromptTokens > 0 {
-				_, err = qt.ChargeInputQuota(ctx, usagePromptTokens, 0)
-				if err != nil {
-					log.Printf("charge input quota failed: %v\n", err)
-				}
 				totalInputTokens += usagePromptTokens
 			}
 			if usageCompletionTokens > 0 {
-				_, err = qt.ChargeOutputQuota(ctx, usageCompletionTokens)
-				if err != nil {
-					log.Printf("charge output quota failed: %v\n", err)
-				}
 				totalOutputTokens += usageCompletionTokens
 			}
 
@@ -356,9 +322,9 @@ func (ps *PromptSession) Run(ctx context.Context) {
 				}
 				var result string
 				if functions.IsAction(functionCall.Name) {
-					result, err = functions.CallAction(ctx, qt, functionCall.Name, fnArgs, ps.conn)
+					result, err = functions.CallAction(ctx, functionCall.Name, fnArgs, ps.conn)
 				} else {
-					result, err = functions.CallFunction(ctx, qt, functionCall.Name, fnArgs)
+					result, err = functions.CallFunction(ctx, functionCall.Name, fnArgs)
 				}
 				if err != nil {
 					log.Printf("call function failed: %v\n", err)
@@ -388,9 +354,8 @@ func (ps *PromptSession) Run(ctx context.Context) {
 		log.Println("Going around again")
 	}
 
-	lies, err := verifier.FindLies(ctx, qt, messages)
+	lies, err := verifier.FindLies(ctx, ps.llmAPIKey, ps.llmBaseURL, ps.llmModel, messages)
 	if err != nil {
-		// Bobby doesn't usually lie, so this isn't worth killing the session over.
 		log.Printf("find lies failed: %v\n", err)
 	}
 	if len(lies) > 0 {
@@ -422,7 +387,7 @@ func (ps *PromptSession) Run(ctx context.Context) {
 		log.Printf("write to websocket failed: %v\n", err)
 	}
 
-	log.Printf("tokens - input: %d, output: %d, cost: %d\n", totalInputTokens, totalOutputTokens, totalInputTokens*quota.InputTokenCredits+totalOutputTokens*quota.OutputTokenCredits)
+	log.Printf("tokens - input: %d, output: %d\n", totalInputTokens, totalOutputTokens)
 	if err := ps.storeThread(ctx, messages); err != nil {
 		log.Printf("store thread failed: %v\n", err)
 		_ = ps.conn.Close(websocket.StatusInternalError, "store thread failed")
@@ -469,11 +434,11 @@ func (ps *PromptSession) storeThread(ctx context.Context, messages []*llm.ChatMe
 	}
 	threadContext := query.ThreadContextFromContext(ctx)
 	threadContext.Messages = toStore
-	return persistence.StoreThread(ctx, ps.redis, threadContext)
+	return persistence.StoreThread(ctx, ps.db, threadContext)
 }
 
 func (ps *PromptSession) restoreContextFromThread(ctx context.Context, oldThreadId string) (*persistence.ThreadContext, error) {
-	threadContext, err := persistence.LoadThread(ctx, ps.redis, oldThreadId)
+	threadContext, err := persistence.LoadThread(ctx, ps.db, oldThreadId)
 	if err != nil {
 		return nil, err
 	}
