@@ -26,7 +26,6 @@ import (
 type Config struct {
 	BaseURL                string
 	DBPath                 string
-	IBMKey                 string
 	ExchangeRateApiKey     string
 	SentryDSN              string
 	GoogleMapsStaticKey    string
@@ -56,7 +55,6 @@ func init() {
 	c = Config{
 		BaseURL:                os.Getenv("BASE_URL"),
 		DBPath:                 dbPath,
-		IBMKey:                 os.Getenv("IBM_KEY"),
 		ExchangeRateApiKey:     os.Getenv("EXCHANGE_RATE_API_KEY"),
 		SentryDSN:              os.Getenv("SENTRY_DSN"),
 		GoogleMapsStaticKey:    os.Getenv("GOOGLE_MAPS_STATIC_KEY"),

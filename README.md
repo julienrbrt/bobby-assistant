@@ -24,8 +24,7 @@ Environment variables:
 
 - `SENTRY_DSN` - (optional) Sentry DSN for error reporting
 - `DB_PATH` - (optional) path to the SQLite database file. Defaults to `bobby.db`
-- `GOOGLE_MAPS_STATIC_KEY`, `GOOGLE_MAPS_STATIC_SECRET`, `GOOGLE_MAPS_STATIC_MAP_ID` - (optional) Google Maps API key for geocoding, routing, POI search, and static map images
-- `IBM_KEY` - (optional) API key for IBM weather data
+- `GOOGLE_MAPS_STATIC_KEY`, `GOOGLE_MAPS_STATIC_SECRET`, `GOOGLE_MAPS_STATIC_MAP_ID` - (optional) Google Maps API key for geocoding, routing, POI search, weather, and static map images
 - `EXCHANGE_RATE_API_KEY` - (optional) API key for exchange rate lookups
 
 ### Client

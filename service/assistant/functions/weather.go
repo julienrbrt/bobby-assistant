@@ -161,7 +161,7 @@ func processDailyForecast(ctx context.Context, lat, lon float64, units string) a
 	}
 	response["temperatureUnit"] = forecast.TemperatureUnit
 	response["windSpeedUnit"] = forecast.WindSpeedUnit
-	response["attribution"] = "The Weather Channel"
+	response["attribution"] = "Google Weather"
 	return response
 }
 
@@ -195,7 +195,7 @@ func processHourlyForecast(ctx context.Context, lat, lon float64, units string) 
 	return map[string]any{
 		"response":        response,
 		"temperatureUnit": hourly.TemperatureUnit,
-		"attribution":     "The Weather Channel",
+		"attribution":     "Google Weather",
 	}
 }
 
