@@ -17,7 +17,6 @@ package persistence
 import (
 	"context"
 	"encoding/json"
-	"time"
 
 	"github.com/getsentry/sentry-go"
 	"github.com/google/uuid"
@@ -51,18 +50,12 @@ type Thread struct {
 	Data string
 }
 
-type ExchangeRate struct {
-	Currency  string `gorm:"primaryKey"`
-	Data      string
-	ExpiresAt time.Time
-}
-
 func NewContext() *ThreadContext {
 	return &ThreadContext{}
 }
 
 func InitDB(db *gorm.DB) {
-	db.AutoMigrate(&Thread{}, &ExchangeRate{})
+	db.AutoMigrate(&Thread{})
 }
 
 func LoadThread(ctx context.Context, db *gorm.DB, id string) (*ThreadContext, error) {

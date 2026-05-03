@@ -4,12 +4,14 @@ Bobby Assistant is an LLM-based assistant that runs on your Pebble smartwatch.
 
 This is a fork of [Bobby Assistant](https://github.com/pebble-dev/bobby-assistant) with the following changes:
 
-- **Self-hosted, no external dependencies.** Removed all reliance on Rebble.io services (user authentication, quota tracking, timeline API, feedback reporting). Users bring their own LLM API key and configure it directly on the watch.
+- **Self-hosted, no external account required.** Removed all reliance on Rebble.io services (user authentication, quota tracking, timeline API, feedback reporting). Users bring their own LLM API key and configure it directly on the watch.
 - **OpenAI-compatible API.** Replaced the Google Gemini client with the OpenAI Go SDK, supporting any OpenAI-compatible endpoint (OpenAI, Ollama, LiteLLM, etc.).
-- **SQLite instead of Redis.** Thread persistence and currency rate caching use a local SQLite database. No external services required.
+- **SQLite instead of Redis.** Thread persistence uses a local SQLite database. No external services required.
 - **Per-user LLM configuration.** API key, base URL, and model are configured in the watch app's settings and sent with each request. No server-side secrets needed for LLM access.
-- **No quota system.** Removed credit-based usage tracking and per-user quotas.
+- **Consolidated Google Maps integration.** Replaced Mapbox (geocoding) and IBM Weather with Google's Geocoding and Weather APIs, using a single API key.
 - **Sentry integration.** Replaced Honeycomb tracing with Sentry for error reporting and performance monitoring.
+- **No quota system.** Removed credit-based usage tracking and per-user quotas.
+- **No currency conversion.** Removed the exchange rate feature and its external API dependency.
 - **Local reminders.** Reminders are stored on-device. Timeline pin notifications are no longer supported since that required Rebble authentication.
 
 ![A screenshot from a Pebble smartwatch running the assistant. The user asked for the time, the assistant responded that it was 3:59 PM.](./docs/screenshot.png)
@@ -25,7 +27,6 @@ Environment variables:
 - `SENTRY_DSN` - (optional) Sentry DSN for error reporting
 - `DB_PATH` - (optional) path to the SQLite database file. Defaults to `bobby.db`
 - `GOOGLE_MAPS_STATIC_KEY`, `GOOGLE_MAPS_STATIC_SECRET`, `GOOGLE_MAPS_STATIC_MAP_ID` - (optional) Google Maps API key for geocoding, routing, POI search, weather, and static map images
-- `EXCHANGE_RATE_API_KEY` - (optional) API key for exchange rate lookups
 
 ### Client
 
