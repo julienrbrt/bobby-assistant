@@ -20,7 +20,6 @@
 #include "about_window.h"
 #include "legal_window.h"
 #include "reminders_menu.h"
-#include "feedback_window.h"
 #include "../util/style.h"
 #include "../util/memory/malloc.h"
 #include "../util/memory/sdk.h"
@@ -36,12 +35,11 @@ static void prv_push_timer_screen(int index, void* context);
 static void prv_push_about_screen(int index, void* context);
 static void prv_push_legal_screen(int index, void* context);
 static void prv_push_reminders_screen(int index, void* context);
-static void prv_push_feedback_screen(int index, void* context);
 
 static SimpleMenuSection s_menu_section = {
   .num_items = 0,
 };
-static SimpleMenuItem s_menu_items[7];
+static SimpleMenuItem s_menu_items[6];
 
 typedef struct {
   SimpleMenuLayer *menu_layer;
@@ -85,21 +83,16 @@ static void prv_window_load(Window* window) {
       .icon = bgbitmap_create_with_resource(RESOURCE_ID_MENU_ICON_QUOTA),
     };
     s_menu_items[4] = (SimpleMenuItem) {
-      .title = "Feedback",
-      .callback = prv_push_feedback_screen,
-      .icon = bgbitmap_create_with_resource(RESOURCE_ID_MENU_ICON_FEEDBACK),
-    };
-    s_menu_items[5] = (SimpleMenuItem) {
       .title = "About",
       .callback = prv_push_about_screen,
       .icon = bgbitmap_create_with_resource(RESOURCE_ID_MENU_ICON_ABOUT),
     };
-    s_menu_items[6] = (SimpleMenuItem) {
+    s_menu_items[5] = (SimpleMenuItem) {
       .title = "Legal",
       .callback = prv_push_legal_screen,
       .icon = bgbitmap_create_with_resource(RESOURCE_ID_MENU_ICON_LEGAL),
     };
-    s_menu_section.num_items = 7;
+    s_menu_section.num_items = 6;
     s_menu_section.items = s_menu_items;
   }
 
@@ -148,10 +141,6 @@ static void prv_push_legal_screen(int index, void* context) {
 
 static void prv_push_reminders_screen(int index, void* context) {
   reminders_menu_push();
-}
-
-static void prv_push_feedback_screen(int index, void* context) {
-  feedback_window_push();
 }
 
 static void prv_push_about_screen(int index, void* context) {

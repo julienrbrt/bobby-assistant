@@ -85,18 +85,10 @@
       "HIGHLIGHT_WIDGET_PRIMARY",
       "HIGHLIGHT_WIDGET_SECONDARY",
       "QUOTA_HAS_SUBSCRIPTION",
-      "FEEDBACK_TEXT",
-      "FEEDBACK_APP_MAJOR",
-      "FEEDBACK_APP_MINOR",
-      "FEEDBACK_ALARM_COUNT",
-      "FEEDBACK_SEND_RESULT",
       "QUICK_LAUNCH_BEHAVIOUR",
       "TIMER_VIBE_PATTERN",
       "ALARM_VIBE_PATTERN",
-      "REPORT_THREAD_UUID",
-      "REPORT_SEND_RESULT",
       "COBBLE_WARNING",
-      "ACTION_FEEDBACK_SENT",
       "IMAGE_WIDTH",
       "IMAGE_HEIGHT",
       "IMAGE_START_BYTE_SIZE",
@@ -229,16 +221,6 @@
           "type": "raw"
         },
         {
-          "file": "text/feedback_blurb.txt",
-          "name": "FEEDBACK_BLURB",
-          "type": "raw"
-        },
-        {
-          "file": "text/report_blurb.txt",
-          "name": "REPORT_BLURB",
-          "type": "raw"
-        },
-        {
           "file": "text/sample_prompts.txt",
           "name": "SAMPLE_PROMPTS",
           "type": "raw"
@@ -358,24 +340,6 @@
         {
           "file": "icons/menu_alarms_bw.png",
           "name": "MENU_ICON_ALARMS",
-          "type": "bitmap",
-          "memoryFormat": "1Bit",
-          "targetPlatforms": [
-            "diorite"
-          ]
-        },
-        {
-          "file": "icons/menu_feedback.png",
-          "name": "MENU_ICON_FEEDBACK",
-          "type": "bitmap",
-          "targetPlatforms": [
-            "basalt",
-            "emery"
-          ]
-        },
-        {
-          "file": "icons/menu_feedback_bw.png",
-          "name": "MENU_ICON_FEEDBACK",
           "type": "bitmap",
           "memoryFormat": "1Bit",
           "targetPlatforms": [

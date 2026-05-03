@@ -22,7 +22,6 @@ var clayConfig = require('./config.json');
 var customConfigFunction = require('./custom_config');
 var config = require('./config');
 var reminders = require('./reminders');
-var feedback = require('./lib/feedback');
 var package_json = require('package.json');
 
 
@@ -67,18 +66,9 @@ function handleAppMessage(e) {
     if ('LOCATION_ENABLED' in data) {
         config.setSetting("LOCATION_ENABLED", !!data.LOCATION_ENABLED);
         console.log("Location enabled: " + config.isLocationEnabled());
-        // We need to confirm that we received this for the watch to proceed.
         Pebble.sendAppMessage({
             LOCATION_ENABLED: data.LOCATION_ENABLED,
         });
-    }
-    if ('FEEDBACK_TEXT' in data) {
-        console.log("Handling feedback...");
-        feedback.handleFeedbackRequest(data);
-    }
-    if ('REPORT_THREAD_UUID' in data) {
-        console.log("Handling report...");
-        feedback.handleReportRequest(data);
     }
 }
 

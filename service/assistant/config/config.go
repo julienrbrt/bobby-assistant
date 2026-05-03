@@ -33,8 +33,7 @@ type Config struct {
 	ExchangeRateApiKey      string
 	RedisURL                string
 	UserIdentificationURL   string
-	HoneycombKey            string
-	DiscordFeedbackURL      string
+	HoneycombKey           string
 	GoogleMapsStaticKey     string
 	GoogleMapsStaticSecret  string
 	GoogleMapsStaticMapId   string
@@ -66,7 +65,6 @@ func init() {
 		RedisURL:               os.Getenv("REDIS_URL"),
 		UserIdentificationURL:  os.Getenv("USER_IDENTIFICATION_URL"),
 		HoneycombKey:           os.Getenv("HONEYCOMB_KEY"),
-		DiscordFeedbackURL:     os.Getenv("DISCORD_FEEDBACK_URL"),
 		GoogleMapsStaticKey:    os.Getenv("GOOGLE_MAPS_STATIC_KEY"),
 		GoogleMapsStaticSecret: os.Getenv("GOOGLE_MAPS_STATIC_SECRET"),
 		GoogleMapsStaticMapId:  os.Getenv("GOOGLE_MAPS_STATIC_MAP_ID"),
