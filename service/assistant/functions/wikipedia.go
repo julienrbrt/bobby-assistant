@@ -26,8 +26,9 @@ import (
 	"strings"
 
 	"github.com/honeycombio/beeline-go"
+	"github.com/openai/openai-go/v3"
+	"github.com/openai/openai-go/v3/shared"
 	"github.com/pebble-dev/bobby-assistant/service/assistant/quota"
-	"google.golang.org/genai"
 )
 
 type WikiRequest struct {
@@ -46,33 +47,28 @@ var urlMap = map[string]string{
 }
 
 func init() {
-	f := false
 	registerFunction(Registration{
-		Definition: genai.FunctionDeclaration{
+		Definition: shared.FunctionDefinitionParam{
 			Name:        "wikipedia",
-			Description: "Look up the content of a single named wiki article, from Wikipedia or topic-specific wikis like Bulbapedia. Never say the wiki page didn't have the information needed without first trying to fetch the complete article.",
-			Parameters: &genai.Schema{
-				Type:     genai.TypeObject,
-				Nullable: &f,
-				Properties: map[string]*genai.Schema{
-					"wiki": {
-						Type:        genai.TypeString,
-						Description: "The Wiki to search.",
-						Nullable:    &f,
-						Enum:        []string{"wikipedia", "bulbapedia"},
+			Description: openai.String("Look up the content of a single named wiki article, from Wikipedia or topic-specific wikis like Bulbapedia. Never say the wiki page didn't have the information needed without first trying to fetch the complete article."),
+			Parameters: shared.FunctionParameters{
+				"type": "object",
+				"properties": map[string]any{
+					"wiki": map[string]any{
+						"type":        "string",
+						"description": "The Wiki to search.",
+						"enum":        []string{"wikipedia", "bulbapedia"},
 					},
-					"article_name": {
-						Type:        genai.TypeString,
-						Description: "The name of the article to look up",
-						Nullable:    &f,
+					"article_name": map[string]any{
+						"type":        "string",
+						"description": "The name of the article to look up",
 					},
-					"complete_article": {
-						Type:        genai.TypeBoolean,
-						Description: "Whether to return the complete article or just the summary. Prefer to fetch only the summary. If the summary didn't have the information you expected, you can try again with the complete article.",
-						Nullable:    &f,
+					"complete_article": map[string]any{
+						"type":        "boolean",
+						"description": "Whether to return the complete article or just the summary. Prefer to fetch only the summary. If the summary didn't have the information you expected, you can try again with the complete article.",
 					},
 				},
-				Required: []string{"wiki", "article_name"},
+				"required": []string{"wiki", "article_name"},
 			},
 		},
 		Fn:                        queryWiki,

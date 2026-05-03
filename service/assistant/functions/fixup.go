@@ -18,6 +18,7 @@ import (
 	"encoding/json"
 	"log"
 	"regexp"
+	"strings"
 )
 
 var valueRegexp = regexp.MustCompile(`(?m)^\s*".+?"\s*:\s*(.+?),?\s*$`)
@@ -30,10 +31,10 @@ func FixupBrokenJson(j string) string {
 		return j
 	}
 	values := valueRegexp.FindAllStringSubmatchIndex(j, -1)
-	newRequest := ""
+	var newRequest strings.Builder
 	lastIndex := 0
 	for _, v := range values {
-		newRequest += j[lastIndex:v[2]]
+		newRequest.WriteString(j[lastIndex:v[2]])
 		expression := j[v[2]:v[3]]
 		err := json.Unmarshal([]byte(expression), &throwaway)
 		if err != nil {
@@ -41,9 +42,9 @@ func FixupBrokenJson(j string) string {
 			log.Printf("Replacing expression %q with its value %q", expression, replacement)
 			expression = replacement
 		}
-		newRequest += expression
+		newRequest.WriteString(expression)
 		lastIndex = v[3]
 	}
-	newRequest += j[lastIndex:]
-	return newRequest
+	newRequest.WriteString(j[lastIndex:])
+	return newRequest.String()
 }

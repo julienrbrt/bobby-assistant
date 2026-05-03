@@ -1,13 +1,28 @@
+// Copyright 2025 Google LLC
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//      http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package functions
 
 import (
 	"context"
 	"fmt"
-	"google.golang.org/genai"
 	"strings"
 	"time"
 
 	"github.com/honeycombio/beeline-go"
+	"github.com/openai/openai-go/v3"
+	"github.com/openai/openai-go/v3/shared"
 	"github.com/pebble-dev/bobby-assistant/service/assistant/quota"
 )
 
@@ -23,27 +38,24 @@ type GetTimeInput struct {
 }
 
 func init() {
-	f := false
 	registerFunction(Registration{
-		Definition: genai.FunctionDeclaration{
+		Definition: shared.FunctionDefinitionParam{
 			Name:        "get_time_elsewhere",
-			Description: "Get the current time in a given valid tzdb timezone. Not all cities have a tzdb entry - be sure to use one that exists. Call multiple times to find the time in multiple timezones.",
-			Parameters: &genai.Schema{
-				Type:     genai.TypeObject,
-				Nullable: &f,
-				Properties: map[string]*genai.Schema{
-					"timezone": {
-						Type:        genai.TypeString,
-						Description: "The timezone, e.g. 'America/Los_Angeles'.",
-						Nullable:    &f,
+			Description: openai.String("Get the current time in a given valid tzdb timezone. Not all cities have a tzdb entry - be sure to use one that exists. Call multiple times to find the time in multiple timezones."),
+			Parameters: shared.FunctionParameters{
+				"type": "object",
+				"properties": map[string]any{
+					"timezone": map[string]any{
+						"type":        "string",
+						"description": "The timezone, e.g. 'America/Los_Angeles'.",
 					},
-					"offset": {
-						Type:        genai.TypeNumber,
-						Description: "The number of seconds to add to the current time, if checking a different time. Omit or set to zero for current time.",
-						Format:      "double",
+					"offset": map[string]any{
+						"type":        "number",
+						"description": "The number of seconds to add to the current time, if checking a different time. Omit or set to zero for current time.",
+						"format":      "double",
 					},
 				},
-				Required: []string{"timezone"},
+				"required": []string{"timezone"},
 			},
 		},
 		Fn:        getTimeElsewhere,

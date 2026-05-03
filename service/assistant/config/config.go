@@ -24,18 +24,20 @@ import (
 // TODO: something reasonable.
 
 type Config struct {
-	BaseURL                string
-	GeminiKey              string
-	MapboxKey              string
-	IBMKey                 string
-	ExchangeRateApiKey     string
-	RedisURL               string
-	UserIdentificationURL  string
-	HoneycombKey           string
-	DiscordFeedbackURL     string
-	GoogleMapsStaticKey    string
-	GoogleMapsStaticSecret string
-	GoogleMapsStaticMapId  string
+	BaseURL                 string
+	LLMBaseURL              string
+	LLMAPIKey               string
+	LLMModel                string
+	MapboxKey               string
+	IBMKey                  string
+	ExchangeRateApiKey      string
+	RedisURL                string
+	UserIdentificationURL   string
+	HoneycombKey            string
+	DiscordFeedbackURL      string
+	GoogleMapsStaticKey     string
+	GoogleMapsStaticSecret  string
+	GoogleMapsStaticMapId   string
 }
 
 var c Config
@@ -54,8 +56,10 @@ func init() {
 	}
 
 	c = Config{
-		BaseURL:                os.Getenv("BASE_URL"),
-		GeminiKey:              os.Getenv("GEMINI_KEY"),
+		BaseURL:                 os.Getenv("BASE_URL"),
+		LLMBaseURL:              os.Getenv("LLM_BASE_URL"),
+		LLMAPIKey:               os.Getenv("LLM_API_KEY"),
+		LLMModel:                os.Getenv("LLM_MODEL"),
 		MapboxKey:              os.Getenv("MAPBOX_KEY"),
 		IBMKey:                 os.Getenv("IBM_KEY"),
 		ExchangeRateApiKey:     os.Getenv("EXCHANGE_RATE_API_KEY"),

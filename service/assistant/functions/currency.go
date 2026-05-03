@@ -20,7 +20,8 @@ import (
 	"log"
 
 	"github.com/honeycombio/beeline-go"
-	"google.golang.org/genai"
+	"github.com/openai/openai-go/v3"
+	"github.com/openai/openai-go/v3/shared"
 
 	"github.com/pebble-dev/bobby-assistant/service/assistant/quota"
 	"github.com/pebble-dev/bobby-assistant/service/assistant/util/currencies"
@@ -38,32 +39,28 @@ type CurrencyConversionResponse struct {
 }
 
 func init() {
-	f := false
 	registerFunction(Registration{
-		Definition: genai.FunctionDeclaration{
+		Definition: shared.FunctionDefinitionParam{
 			Name:        "convert_currency",
-			Description: "Convert an amount of one (real, non-crypto) currency to another. *Always* call this function to get exchange rates when doing currency conversion - never use memorised rates.",
-			Parameters: &genai.Schema{
-				Type:     genai.TypeObject,
-				Nullable: &f,
-				Properties: map[string]*genai.Schema{
-					"amount": {
-						Type:        genai.TypeNumber,
-						Format:      "double",
-						Description: "The amount of currency to convert.",
-						Nullable:    &f,
+			Description: openai.String("Convert an amount of one (real, non-crypto) currency to another. *Always* call this function to get exchange rates when doing currency conversion - never use memorised rates."),
+			Parameters: shared.FunctionParameters{
+				"type": "object",
+				"properties": map[string]any{
+					"amount": map[string]any{
+						"type":        "number",
+						"format":      "double",
+						"description": "The amount of currency to convert.",
 					},
-					"from": {
-						Type:        genai.TypeString,
-						Description: "The currency code to convert from.",
-						Nullable:    &f,
+					"from": map[string]any{
+						"type":        "string",
+						"description": "The currency code to convert from.",
 					},
-					"to": {
-						Type:        genai.TypeString,
-						Description: "The currency code to convert to.",
+					"to": map[string]any{
+						"type":        "string",
+						"description": "The currency code to convert to.",
 					},
 				},
-				Required: []string{"amount", "from", "to"},
+				"required": []string{"amount", "from", "to"},
 			},
 		},
 		Fn:        convertCurrency,

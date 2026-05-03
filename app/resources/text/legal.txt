@@ -1,6 +1,6 @@
 # Legal
-## Gemini
-AI processing is provided by Google's Gemini under the terms at https://ai.google.dev/gemini-api/terms (Bobby is a 'paid service').
+## AI Provider
+AI processing is provided by your configured LLM provider via an OpenAI-compatible API. Consult your provider's terms of service for details.
 
 ## Weather
 Weather data provided by The Weather Channel.

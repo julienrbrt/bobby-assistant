@@ -18,6 +18,8 @@ import (
 	"context"
 	"fmt"
 	"github.com/honeycombio/beeline-go"
+	"github.com/openai/openai-go/v3"
+	"github.com/openai/openai-go/v3/shared"
 	"github.com/pebble-dev/bobby-assistant/service/assistant/quota"
 	"log"
 	"math"
@@ -26,7 +28,6 @@ import (
 
 	"github.com/pebble-dev/bobby-assistant/service/assistant/query"
 	"github.com/yuin/gopher-lua"
-	"google.golang.org/genai"
 )
 
 type LuaInput struct {
@@ -37,28 +38,23 @@ type LuaInput struct {
 }
 
 func init() {
-	f := false
-	t := true
 	registerFunction(Registration{
-		Definition: genai.FunctionDeclaration{
+		Definition: shared.FunctionDefinitionParam{
 			Name:        "lua",
-			Description: "Runs the provided Lua 5.2 script, and gives the value returned in a return statement. ONLY STANDARD LIBRARY FUNCTIONS ARE AVAILABLE. DO NOT CALL ANYTHING ELSE. Do not use `print` to return a result -- instead, use `return`.",
-			Parameters: &genai.Schema{
-				Type:     genai.TypeObject,
-				Nullable: &f,
-				Properties: map[string]*genai.Schema{
-					"script": {
-						Type:        genai.TypeString,
-						Description: "The Lua 5.2 script to run. Remember the return statements -- don't use print!",
-						Nullable:    &f,
+			Description: openai.String("Runs the provided Lua 5.2 script, and gives the value returned in a return statement. ONLY STANDARD LIBRARY FUNCTIONS ARE AVAILABLE. DO NOT CALL ANYTHING ELSE. Do not use `print` to return a result -- instead, use `return`."),
+			Parameters: shared.FunctionParameters{
+				"type": "object",
+				"properties": map[string]any{
+					"script": map[string]any{
+						"type":        "string",
+						"description": "The Lua 5.2 script to run. Remember the return statements -- don't use print!",
 					},
-					"timezone": {
-						Type:        genai.TypeString,
-						Description: "If necessary, the timezone name to assume when running the script. Defaults to the user's local time.",
-						Nullable:    &t,
+					"timezone": map[string]any{
+						"type":        "string",
+						"description": "If necessary, the timezone name to assume when running the script. Defaults to the user's local time.",
 					},
 				},
-				Required: []string{"script"},
+				"required": []string{"script"},
 			},
 		},
 		Fn:        luaImplementation,
@@ -274,12 +270,9 @@ func strRep(L *lua.LState) int {
 
 func osTime(L *lua.LState, timezone string, userTzOffset int) int {
 	if L.GetTop() == 0 {
-		// If there are no arguments, timezone is not a relevant consideration, so just return the current time.
 		L.Push(lua.LNumber(time.Now().Unix()))
 		return 1
 	}
-	// If a table is present, then we are supposed to construct a timezone in the local timezone (which we have promised
-	// is either the user's local timezone, or whatever timezone the model felt like passing us).
 	table := L.CheckTable(1)
 	year, ok := table.RawGetString("year").(lua.LNumber)
 	if !ok {

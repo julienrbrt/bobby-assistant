@@ -18,11 +18,12 @@ import (
 	"context"
 	"fmt"
 	"github.com/honeycombio/beeline-go"
+	"github.com/openai/openai-go/v3"
+	"github.com/openai/openai-go/v3/shared"
 	"github.com/pebble-dev/bobby-assistant/service/assistant/query"
 	"github.com/pebble-dev/bobby-assistant/service/assistant/quota"
 	"github.com/pebble-dev/bobby-assistant/service/assistant/util/mapbox"
 	"github.com/pebble-dev/bobby-assistant/service/assistant/util/weather"
-	"google.golang.org/genai"
 	"strings"
 )
 
@@ -36,35 +37,29 @@ type WeatherInput struct {
 }
 
 func init() {
-	t := true
-	f := false
 	registerFunction(Registration{
-		Definition: genai.FunctionDeclaration{
+		Definition: shared.FunctionDefinitionParam{
 			Name:        "get_weather",
-			Description: "Given a location, return the current or future weather, and sunrise/sunset times. Do not specify a location if you want the user's local weather.",
-			Parameters: &genai.Schema{
-				Type:     genai.TypeObject,
-				Nullable: &f,
-				Properties: map[string]*genai.Schema{
-					"location": {
-						Type:        genai.TypeString,
-						Description: "The city, state, and country, e.g. 'Redwood City, CA, USA'. Omit for the user's current location.",
-						Nullable:    &t,
+			Description: openai.String("Given a location, return the current or future weather, and sunrise/sunset times. Do not specify a location if you want the user's local weather."),
+			Parameters: shared.FunctionParameters{
+				"type": "object",
+				"properties": map[string]any{
+					"location": map[string]any{
+						"type":        "string",
+						"description": "The city, state, and country, e.g. 'Redwood City, CA, USA'. Omit for the user's current location.",
 					},
-					"unit": {
-						Type:        genai.TypeString,
-						Description: "The user's unit preference",
-						Nullable:    &f,
-						Enum:        []string{"imperial", "metric", "uk hybrid"},
+					"unit": map[string]any{
+						"type":        "string",
+						"description": "The user's unit preference",
+						"enum":        []string{"imperial", "metric", "uk hybrid"},
 					},
-					"kind": {
-						Type:        genai.TypeString,
-						Description: "The kind of weather to return: current weather, the next 7 days, or the next 24 hours.",
-						Nullable:    &f,
-						Enum:        []string{"current", "forecast daily", "forecast hourly"},
+					"kind": map[string]any{
+						"type":        "string",
+						"description": "The kind of weather to return: current weather, the next 7 days, or the next 24 hours.",
+						"enum":        []string{"current", "forecast daily", "forecast hourly"},
 					},
 				},
-				Required: []string{"unit", "kind"},
+				"required": []string{"unit", "kind"},
 			},
 		},
 		Fn:        getWeather,

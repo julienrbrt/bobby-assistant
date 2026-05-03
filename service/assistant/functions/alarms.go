@@ -1,28 +1,15 @@
-// Copyright 2025 Google LLC
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//      http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
-
 package functions
 
 import (
 	"context"
 	"github.com/honeycombio/beeline-go"
+	"github.com/openai/openai-go/v3"
+	"github.com/openai/openai-go/v3/shared"
 	"github.com/pebble-dev/bobby-assistant/service/assistant/quota"
 	"log"
 	"maps"
 
 	"github.com/pebble-dev/bobby-assistant/service/assistant/query"
-	"google.golang.org/genai"
 )
 
 type AlarmInput struct {
@@ -55,26 +42,22 @@ type DeleteTimerInput struct {
 type Empty struct{}
 
 func init() {
-	f := false
-	t := true
-	params := genai.Schema{
-		Type:     genai.TypeObject,
-		Nullable: &f,
-		Properties: map[string]*genai.Schema{
-			"time": {
-				Type:        genai.TypeString,
-				Description: "The time to schedule the alarm for in ISO 8601 format, e.g. '2023-07-12T00:00:00-07:00'. Must always be in the future.",
-				Nullable:    &t,
+	params := shared.FunctionParameters{
+		"type": "object",
+		"properties": map[string]any{
+			"time": map[string]any{
+				"type":        "string",
+				"description": "The time to schedule the alarm for in ISO 8601 format, e.g. '2023-07-12T00:00:00-07:00'. Must always be in the future.",
 			},
 		},
 	}
 	// This registration is for old watch apps that don't support named alarms. The anticapability prevents it
 	// from being seen by newer apps.
 	registerFunction(Registration{
-		Definition: genai.FunctionDeclaration{
+		Definition: shared.FunctionDefinitionParam{
 			Name:        "set_alarm",
-			Description: "Set an alarm for a given time.",
-			Parameters:  &params,
+			Description: openai.String("Set an alarm for a given time."),
+			Parameters:  params,
 		},
 		Cb:             alarmImpl,
 		Thought:        alarmThought,
@@ -83,19 +66,20 @@ func init() {
 	})
 
 	paramsWithNames := params
-	paramsWithNames.Properties = maps.Clone(params.Properties)
-	paramsWithNames.Properties["name"] = &genai.Schema{
-		Type:        genai.TypeString,
-		Description: "Only if explicitly specified by the user, the name of the alarm. Use title case. If the user didn't ask to name the alarm, just leave it empty.",
-		Nullable:    &t,
+	paramsWithNames = maps.Clone(params)
+	props := maps.Clone(paramsWithNames["properties"].(map[string]any))
+	props["name"] = map[string]any{
+		"type":        "string",
+		"description": "Only if explicitly specified by the user, the name of the alarm. Use title case. If the user didn't ask to name the alarm, just leave it empty.",
 	}
+	paramsWithNames["properties"] = props
 	// This registration is for new watch apps that support named alarms. The capability prevents the option for
 	// naming being presented to the model for older apps.
 	registerFunction(Registration{
-		Definition: genai.FunctionDeclaration{
+		Definition: shared.FunctionDefinitionParam{
 			Name:        "set_alarm",
-			Description: "Set an alarm for a given time.",
-			Parameters:  &paramsWithNames,
+			Description: openai.String("Set an alarm for a given time."),
+			Parameters:  paramsWithNames,
 		},
 		Cb:         alarmImpl,
 		Thought:    alarmThought,
@@ -104,9 +88,9 @@ func init() {
 	})
 
 	registerFunction(Registration{
-		Definition: genai.FunctionDeclaration{
+		Definition: shared.FunctionDefinitionParam{
 			Name:        "get_alarms",
-			Description: "Get any existing alarms.",
+			Description: openai.String("Get any existing alarms."),
 		},
 		Aliases:   []string{"get_alarm"},
 		Cb:        getAlarmImpl,
@@ -115,17 +99,15 @@ func init() {
 	})
 
 	registerFunction(Registration{
-		Definition: genai.FunctionDeclaration{
+		Definition: shared.FunctionDefinitionParam{
 			Name:        "delete_alarm",
-			Description: "Delete a specific alarm by its expiration time.",
-			Parameters: &genai.Schema{
-				Type:     genai.TypeObject,
-				Nullable: &f,
-				Properties: map[string]*genai.Schema{
-					"time": {
-						Type:        genai.TypeString,
-						Description: "The time of the alarm to delete in ISO 8601 format, e.g. '2023-07-12T00:00:00-07:00'.",
-						Nullable:    &t,
+			Description: openai.String("Delete a specific alarm by its expiration time."),
+			Parameters: shared.FunctionParameters{
+				"type": "object",
+				"properties": map[string]any{
+					"time": map[string]any{
+						"type":        "string",
+						"description": "The time of the alarm to delete in ISO 8601 format, e.g. '2023-07-12T00:00:00-07:00'.",
 					},
 				},
 			},
@@ -134,43 +116,41 @@ func init() {
 		Thought:   deleteAlarmThought,
 		InputType: DeleteAlarmInput{},
 	})
-	timerParams := genai.Schema{
-		Type:     genai.TypeObject,
-		Nullable: &f,
-		Properties: map[string]*genai.Schema{
-			"duration_seconds": {
-				Type:        genai.TypeInteger,
-				Description: "The number of seconds to set the timer for.",
-				Nullable:    &t,
-				Format:      "int32",
+	timerParams := shared.FunctionParameters{
+		"type": "object",
+		"properties": map[string]any{
+			"duration_seconds": map[string]any{
+				"type":        "integer",
+				"description": "The number of seconds to set the timer for.",
+				"format":      "int32",
 			},
 		},
 	}
 	// This registration is for old watch apps that don't support named alarms. The anticapability prevents it
 	// from being seen by newer apps.
 	registerFunction(Registration{
-		Definition: genai.FunctionDeclaration{
+		Definition: shared.FunctionDefinitionParam{
 			Name:        "set_timer",
-			Description: "Set a timer for a given duration.",
-			Parameters:  &timerParams,
+			Description: openai.String("Set a timer for a given duration."),
+			Parameters:  timerParams,
 		},
 		Cb:             timerImpl,
 		Thought:        timerThought,
 		InputType:      TimerInput{},
 		AntiCapability: "named_alarms",
 	})
-	timerParamsWithNames := timerParams
-	timerParamsWithNames.Properties = maps.Clone(timerParams.Properties)
-	timerParamsWithNames.Properties["name"] = &genai.Schema{
-		Type:        genai.TypeString,
-		Description: "Only if explicitly specified by the user, the name of the timer. Use title case. If the user didn't ask to name the timer, just leave it empty.",
-		Nullable:    &t,
+	timerParamsWithNames := maps.Clone(timerParams)
+	timerProps := maps.Clone(timerParams["properties"].(map[string]any))
+	timerProps["name"] = map[string]any{
+		"type":        "string",
+		"description": "Only if explicitly specified by the user, the name of the timer. Use title case. If the user didn't ask to name the timer, just leave it empty.",
 	}
+	timerParamsWithNames["properties"] = timerProps
 	registerFunction(Registration{
-		Definition: genai.FunctionDeclaration{
+		Definition: shared.FunctionDefinitionParam{
 			Name:        "set_timer",
-			Description: "Set a timer for a given time.",
-			Parameters:  &timerParamsWithNames,
+			Description: openai.String("Set a timer for a given time."),
+			Parameters:  timerParamsWithNames,
 		},
 		Cb:         timerImpl,
 		Thought:    timerThought,
@@ -179,9 +159,9 @@ func init() {
 	})
 
 	registerFunction(Registration{
-		Definition: genai.FunctionDeclaration{
+		Definition: shared.FunctionDefinitionParam{
 			Name:        "get_timers",
-			Description: "Get any existing timers.",
+			Description: openai.String("Get any existing timers."),
 		},
 		Aliases:   []string{"get_timer"},
 		Cb:        getTimerImpl,
@@ -190,17 +170,15 @@ func init() {
 	})
 
 	registerFunction(Registration{
-		Definition: genai.FunctionDeclaration{
+		Definition: shared.FunctionDefinitionParam{
 			Name:        "delete_timer",
-			Description: "Delete a specific timer by its expiration time.",
-			Parameters: &genai.Schema{
-				Type:     genai.TypeObject,
-				Nullable: &f,
-				Properties: map[string]*genai.Schema{
-					"time": {
-						Type:        genai.TypeString,
-						Description: "The time of the alarm to delete in ISO 8601 format, e.g. '2023-07-12T00:00:00-07:00'.",
-						Nullable:    &f,
+			Description: openai.String("Delete a specific timer by its expiration time."),
+			Parameters: shared.FunctionParameters{
+				"type": "object",
+				"properties": map[string]any{
+					"time": map[string]any{
+						"type":        "string",
+						"description": "The time of the alarm to delete in ISO 8601 format, e.g. '2023-07-12T00:00:00-07:00'.",
 					},
 				},
 			},
