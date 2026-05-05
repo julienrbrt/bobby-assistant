@@ -38,12 +38,13 @@ MessageLayer* message_layer_create(GRect rect, ConversationEntry* entry) {
     MessageLayerData* data = layer_get_data(layer);
     const FontsConfig *fonts = fonts_get_config();
     data->entry = entry;
-    data->speaker_layer = btext_layer_create(GRect(5, 0, rect.size.w, fonts->small_font_cap * 1.75));
+    int16_t speaker_h = (fonts->small_font_cap * 7 + 2) / 4;
+    data->speaker_layer = btext_layer_create(GRect(5, 0, rect.size.w, speaker_h));
     size_t content_origin_y = -5;
     EntryType type = conversation_entry_get_type(entry);
     if (type == EntryTypePrompt) {
       text_layer_set_text(data->speaker_layer, "You");
-      content_origin_y = fonts->small_font_cap * 1.75;
+      content_origin_y = speaker_h;
     }
     text_layer_set_font(data->speaker_layer, fonts->small_font);
     layer_add_child(layer, (Layer *)data->speaker_layer);
@@ -77,7 +78,7 @@ void message_layer_update(MessageLayer* layer) {
   GRect frame = layer_get_frame(layer);
   frame.size.h = data->content_height + 5;
   if (conversation_entry_get_type(data->entry) == EntryTypePrompt) {
-    frame.size.h += fonts->small_font_cap * 1.75;
+    frame.size.h += speaker_h;
   }
   text_layer_set_size(data->content_layer, GSize(width - 10, data->content_height + 5));
   layer_set_frame(layer, frame);

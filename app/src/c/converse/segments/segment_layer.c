@@ -78,11 +78,12 @@ SegmentLayer* segment_layer_create(GRect rect, ConversationEntry* entry, bool as
   data->type = prv_get_segment_type(entry);
   GRect child_frame = GRect(0, 0, rect.size.w, rect.size.h);
   if (assistant_label) {
-    data->assistant_label_layer = btext_layer_create(GRect(5, 0, rect.size.w, fonts->small_font_cap * 2.25));
+    int16_t label_h = (fonts->small_font_cap * 9 + 2) / 4;
+    data->assistant_label_layer = btext_layer_create(GRect(5, 0, rect.size.w, label_h));
     text_layer_set_font(data->assistant_label_layer, fonts->small_font);
     layer_add_child(layer, text_layer_get_layer(data->assistant_label_layer));
     text_layer_set_text(data->assistant_label_layer, "Bobby");
-    child_frame = GRect(0, fonts->small_font_cap * 2.25, rect.size.w, rect.size.h - fonts->small_font_cap * 2.25);
+    child_frame = GRect(0, label_h, rect.size.w, rect.size.h - label_h);
   } else {
     data->assistant_label_layer = NULL;
   }
@@ -120,7 +121,7 @@ SegmentLayer* segment_layer_create(GRect rect, ConversationEntry* entry, bool as
   GSize child_size = layer_get_frame(data->layer).size;
   GRect final_size = GRect(rect.origin.x, rect.origin.y, child_size.w, child_size.h);
   if (data->assistant_label_layer) {
-    final_size.size.h += fonts->small_font_cap * 2.25;
+    final_size.size.h += (fonts->small_font_cap * 9 + 2) / 4;
   }
   layer_set_frame(layer, final_size);
   return layer;
@@ -207,7 +208,7 @@ void segment_layer_update(SegmentLayer* layer) {
   GPoint origin = layer_get_frame(layer).origin;
   GRect final_frame = GRect(origin.x, origin.y, child_size.w, child_size.h);
   if (data->assistant_label_layer) {
-    final_frame.size.h += fonts->small_font_cap * 2.25;
+    final_frame.size.h += (fonts->small_font_cap * 9 + 2) / 4;
   }
   layer_set_frame(layer, final_frame);
 }

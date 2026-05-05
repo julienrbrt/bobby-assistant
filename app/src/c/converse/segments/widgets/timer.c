@@ -35,7 +35,8 @@ static void prv_update_text_buffer(TimerWidgetData* data);
 
 TimerWidget* timer_widget_create(GRect rect, ConversationEntry* entry) {
   const FontsConfig *fonts = fonts_get_config();
-  Layer *layer = blayer_create_with_data(GRect(rect.origin.x, rect.origin.y, rect.size.w, fonts->title_font_cap * 1.5 + fonts->content_font_cap * 1.75), sizeof(TimerWidgetData));
+  int16_t timer_h = (fonts->title_font_cap * 3 + 1) / 2 + (fonts->content_font_cap * 7 + 2) / 4;
+  Layer *layer = blayer_create_with_data(GRect(rect.origin.x, rect.origin.y, rect.size.w, timer_h), sizeof(TimerWidgetData));
   TimerWidgetData* data = layer_get_data(layer);
 
   data->entry = entry;
@@ -83,8 +84,8 @@ static void prv_layer_update(Layer *layer, GContext *ctx) {
 
   const int16_t icon_space = 26;
 
-  graphics_draw_text(ctx, widget->name ? widget->name : "Timer", fonts->title_font, GRect(icon_space, bounds.origin.y, bounds.size.w - icon_space, fonts->title_font_cap * 1.75), GTextOverflowModeTrailingEllipsis, GTextAlignmentLeft, NULL);
-  graphics_draw_text(ctx, data->text, fonts->content_font, GRect(5, bounds.origin.y + fonts->title_font_cap * 1.5, bounds.size.w - 5, fonts->content_font_cap * 1.75), GTextOverflowModeTrailingEllipsis, GTextAlignmentLeft, NULL);
+  graphics_draw_text(ctx, widget->name ? widget->name : "Timer", fonts->title_font, GRect(icon_space, bounds.origin.y, bounds.size.w - icon_space, (fonts->title_font_cap * 7 + 2) / 4), GTextOverflowModeTrailingEllipsis, GTextAlignmentLeft, NULL);
+  graphics_draw_text(ctx, data->text, fonts->content_font, GRect(5, bounds.origin.y + (fonts->title_font_cap * 3 + 1) / 2, bounds.size.w - 5, (fonts->content_font_cap * 7 + 2) / 4), GTextOverflowModeTrailingEllipsis, GTextAlignmentLeft, NULL);
 }
 
 static void prv_handle_tick(struct tm *tick_time, TimeUnits units_changed, void *context) {

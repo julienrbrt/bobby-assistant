@@ -155,6 +155,7 @@ static void prv_window_unload(Window *window) {
   bitmap_layer_destroy(data->select_indicator_layer);
   layer_destroy(data->content_indicator_layer);
   free(data);
+  window_destroy(window);
 }
 
 static void prv_set_stage(Window* window, int stage) {

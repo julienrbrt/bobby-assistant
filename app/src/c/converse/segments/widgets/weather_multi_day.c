@@ -31,7 +31,7 @@ static void prv_layer_update(Layer *layer, GContext *ctx);
 
 WeatherMultiDayWidget* weather_multi_day_widget_create(GRect rect, ConversationEntry* entry) {
   const FontsConfig *fonts = fonts_get_config();
-  int layer_height = fonts->title_font_cap * 1.5 + fonts->small_font_cap * 1.5 + 36 + fonts->small_content_font_cap * 3.5;
+  int layer_height = (fonts->title_font_cap * 3 + 1) / 2 + (fonts->small_font_cap * 3 + 1) / 2 + 36 + (fonts->small_content_font_cap * 7 + 1) / 2;
   Layer *layer = blayer_create_with_data(GRect(rect.origin.x, rect.origin.y, rect.size.w, layer_height), sizeof(WeatherMultiDayWidgetData));
   WeatherMultiDayWidgetData *data = layer_get_data(layer);
   ConversationWidgetWeatherMultiDay *w = &conversation_entry_get_widget(entry)->widget.weather_multi_day;
@@ -56,10 +56,10 @@ static void prv_layer_update(Layer *layer, GContext *ctx) {
   graphics_draw_line(ctx, GPoint(0, 0), GPoint(bounds.size.w, 0));
   graphics_draw_line(ctx, GPoint(0, bounds.size.h - 1), GPoint(bounds.size.w, bounds.size.h - 1));
   graphics_context_set_text_color(ctx, GColorBlack);
-  graphics_draw_text(ctx, widget->location, fonts->title_font, GRect(0, 0, bounds.size.w, fonts->title_font_cap * 1.75), GTextOverflowModeFill, GTextAlignmentCenter, NULL);
+  graphics_draw_text(ctx, widget->location, fonts->title_font, GRect(0, 0, bounds.size.w, (fonts->title_font_cap * 7 + 2) / 4), GTextOverflowModeFill, GTextAlignmentCenter, NULL);
   const int SEGMENT_WIDTH = bounds.size.w / 3;
   for (int i = 0; i < 3; i++) {
-    int y = fonts->title_font_cap * 1.5;
+    int y = (fonts->title_font_cap * 3 + 1) / 2;
     int x = i * SEGMENT_WIDTH;
 #if defined(PBL_COLOR)
     graphics_context_set_text_color(ctx, GColorBlack);
@@ -67,20 +67,19 @@ static void prv_layer_update(Layer *layer, GContext *ctx) {
     if (data->icons[i]) {
 #if defined(PBL_COLOR)
       graphics_context_set_fill_color(ctx, weather_widget_get_colour_for_condition(widget->days[i].condition));
-      graphics_fill_circle(ctx, GPoint(x + SEGMENT_WIDTH / 2, y + 18 + fonts->title_font_cap * 1.5), 18);
+      graphics_fill_circle(ctx, GPoint(x + SEGMENT_WIDTH / 2, y + 18 + (fonts->title_font_cap * 3 + 1) / 2), 18);
 #endif
-      gdraw_command_image_draw(ctx, data->icons[i], GPoint(x + SEGMENT_WIDTH / 2 - 12, y + 6 + fonts->title_font_cap * 1.5));
+      gdraw_command_image_draw(ctx, data->icons[i], GPoint(x + SEGMENT_WIDTH / 2 - 12, y + 6 + (fonts->title_font_cap * 3 + 1) / 2));
       y += 36;
     }
-    graphics_draw_text(ctx, widget->days[i].day, fonts->small_font, GRect(x, fonts->small_font_cap * 2, SEGMENT_WIDTH, fonts->small_font_cap * 1.75), GTextOverflowModeFill, GTextAlignmentCenter, NULL);
-    y += fonts->small_font_cap * 1.5;
-    // The temperatures are bumped a couple of pixels right to look more balanced
-    graphics_draw_text(ctx, data->rendered_highs[i], fonts->small_content_font, GRect(x+2, y, SEGMENT_WIDTH, fonts->small_content_font_cap * 1.75), GTextOverflowModeTrailingEllipsis, GTextAlignmentCenter, NULL);
+    graphics_draw_text(ctx, widget->days[i].day, fonts->small_font, GRect(x, fonts->small_font_cap * 2, SEGMENT_WIDTH, (fonts->small_font_cap * 7 + 2) / 4), GTextOverflowModeFill, GTextAlignmentCenter, NULL);
+    y += (fonts->small_font_cap * 3 + 1) / 2;
+    graphics_draw_text(ctx, data->rendered_highs[i], fonts->small_content_font, GRect(x+2, y, SEGMENT_WIDTH, (fonts->small_content_font_cap * 7 + 2) / 4), GTextOverflowModeTrailingEllipsis, GTextAlignmentCenter, NULL);
 #if defined(PBL_COLOR)
     graphics_context_set_text_color(ctx, GColorDarkGray);
 #endif
-    y += fonts->small_content_font_cap * 1.5;
-    graphics_draw_text(ctx, data->rendered_lows[i], fonts->small_content_font, GRect(x+2, y, SEGMENT_WIDTH, fonts->small_content_font_cap * 1.75), GTextOverflowModeTrailingEllipsis, GTextAlignmentCenter, NULL);
+    y += (fonts->small_content_font_cap * 3 + 1) / 2;
+    graphics_draw_text(ctx, data->rendered_lows[i], fonts->small_content_font, GRect(x+2, y, SEGMENT_WIDTH, (fonts->small_content_font_cap * 7 + 2) / 4), GTextOverflowModeTrailingEllipsis, GTextAlignmentCenter, NULL);
   }
 }
 
@@ -96,6 +95,7 @@ void weather_multi_day_widget_destroy(WeatherMultiDayWidget* layer) {
       gdraw_command_image_destroy(data->icons[i]);
     }
   }
+  layer_destroy(layer);
 }
 
 void weather_multi_day_widget_update(WeatherMultiDayWidget* layer) {

@@ -32,7 +32,7 @@ static void prv_layer_update(Layer *layer, GContext *ctx);
 
 WeatherCurrentWidget* weather_current_widget_create(GRect rect, ConversationEntry* entry) {
   const FontsConfig *fonts = fonts_get_config();
-  int layer_height = fonts->title_font_cap * 1.5 + fonts->content_font_cap * 1.5 + fonts->small_font_cap * 3.75;
+  int layer_height = (fonts->title_font_cap * 3 + 1) / 2 + (fonts->content_font_cap * 3 + 1) / 2 + (fonts->small_font_cap * 15 + 2) / 4;
   Layer *layer = blayer_create_with_data(GRect(rect.origin.x, rect.origin.y, rect.size.w, layer_height), sizeof(WeatherCurrentWidgetData));
   WeatherCurrentWidgetData *data = layer_get_data(layer);
   ConversationWidgetWeatherCurrent *w = &conversation_entry_get_widget(entry)->widget.weather_current;
@@ -62,16 +62,16 @@ static void prv_layer_update(Layer *layer, GContext *ctx) {
   graphics_draw_line(ctx, GPoint(0, bounds.size.h - 1), GPoint(bounds.size.w, bounds.size.h - 1));
   graphics_context_set_text_color(ctx, PBL_IF_COLOR_ELSE(gcolor_legible_over(background_color), GColorBlack));
   int top = 0;
-  graphics_draw_text(ctx, widget->location, fonts->title_font, GRect(5, top, bounds.size.w, fonts->title_font_cap * 1.75), GTextOverflowModeFill, GTextAlignmentLeft, NULL);
-  top += fonts->title_font_cap * 1.5;
-  graphics_draw_text(ctx, data->temp_string, fonts->content_font, GRect(5, top, bounds.size.w, fonts->content_font_cap * 1.75), GTextOverflowModeTrailingEllipsis, GTextAlignmentLeft, NULL);
-  top += fonts->content_font_cap * 1.5;
-  graphics_draw_text(ctx, data->feels_like_string, fonts->small_font, GRect(5, top, bounds.size.w - 10, fonts->small_font_cap * 1.75), GTextOverflowModeWordWrap, GTextAlignmentLeft, NULL);
-  top += fonts->small_font_cap * 1.5;
-  graphics_draw_text(ctx, widget->summary, fonts->small_font, GRect(5, top, bounds.size.w - 10, fonts->small_font_cap * 1.75), GTextOverflowModeFill, GTextAlignmentLeft, NULL);
+  graphics_draw_text(ctx, widget->location, fonts->title_font, GRect(5, top, bounds.size.w, (fonts->title_font_cap * 7 + 2) / 4), GTextOverflowModeFill, GTextAlignmentLeft, NULL);
+  top += (fonts->title_font_cap * 3 + 1) / 2;
+  graphics_draw_text(ctx, data->temp_string, fonts->content_font, GRect(5, top, bounds.size.w, (fonts->content_font_cap * 7 + 2) / 4), GTextOverflowModeTrailingEllipsis, GTextAlignmentLeft, NULL);
+  top += (fonts->content_font_cap * 3 + 1) / 2;
+  graphics_draw_text(ctx, data->feels_like_string, fonts->small_font, GRect(5, top, bounds.size.w - 10, (fonts->small_font_cap * 7 + 2) / 4), GTextOverflowModeWordWrap, GTextAlignmentLeft, NULL);
+  top += (fonts->small_font_cap * 3 + 1) / 2;
+  graphics_draw_text(ctx, widget->summary, fonts->small_font, GRect(5, top, bounds.size.w - 10, (fonts->small_font_cap * 7 + 2) / 4), GTextOverflowModeFill, GTextAlignmentLeft, NULL);
 
   if (data->icon) {
-    gdraw_command_image_draw(ctx, data->icon, GPoint(bounds.size.w - 60, fonts->title_font_cap * 1.75));
+    gdraw_command_image_draw(ctx, data->icon, GPoint(bounds.size.w - 60, (fonts->title_font_cap * 7 + 2) / 4));
   }
 }
 

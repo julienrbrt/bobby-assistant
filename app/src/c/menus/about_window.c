@@ -62,6 +62,7 @@ static void prv_window_load(Window* window) {
   VersionInfo version = version_get_current();
   snprintf(data->about_text, res_size + 7, about_text, version.major, version.minor);
   data->about_text[res_size+6] = '\0';
+  free(about_text);
 
   window_set_background_color(window, BRANDED_BACKGROUND_COLOUR);
 
